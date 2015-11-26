@@ -1,9 +1,9 @@
-\section{单一循环：MAPKKK}
-在这里，我先把 MAPK pathway 中的第一步反应写出来，用来练习。其中 ras 为 MAPKKK 的 kinase，而 pase 为 $MAPKKK^{*}$ 的 phosphotase。
+\section{一级反应单一磷酸化：MAPKKK}
+在这里，我先把 MAPK pathway 中的第一步反应写出来，用来练习。其中 ras 为 MAPKKK 的 kinase，而 pase 为 $MAPKKK^{*}$ 的 phosphotase。这里不考虑磷酸化或去磷酸化步骤的逆反应。
 
 \begin{align*}
-  \ce{MAPKKK + ras &<=>[f_{0}][b_{0}] MAPKKK\cdot{}ras ->[k1_{0}] MAPKKK^{*} + ras\\
-    MAPKKK^{*} + pase &<=>[f_{1}][b_{1}] MAPKKK^{*}\cdot{}pase ->[k1_{1}] MAPKKK + pase}
+  \ce{MAPKKK + ras &<=>[f_{0}][b_{0}] MAPKKK\cdot{}ras ->[kf_{0}] MAPKKK^{*} + ras\\
+    MAPKKK^{*} + pase &<=>[f_{1}][b_{1}] MAPKKK^{*}\cdot{}pase ->[kf_{1}] MAPKKK + pase}
 \end{align*}
 
 相应的方程如下：
@@ -37,3 +37,45 @@
   \right]
 \end{displaymath}
 \normalsize
+
+
+\section{一级反应二磷酸化：MAPKKK}
+为了比较在只有一级反应的时候，单一磷酸化和二磷酸化有什么不同，我也写出了一级反应时二磷酸化的情况。这里开始考虑磷酸化或者去磷酸化过程第二步逆反应，但其反应速率相较另外三个反应速率极低，这是为了方便之后分析能量变化。
+
+\begin{align*}
+  \ce{MAPKKK + ras &<=>[f_{0}][b_{0}] MAPKKK\cdot{}ras ->[kf_{0}] MAPKKK^{*} + ras\\
+    MAPKKK^{*} + pase &<=>[f_{1}][b_{1}] MAPKKK^{*}\cdot{}pase ->[kf_{1}] MAPKKK + pase}
+\end{align*}
+
+相应的方程如下：
+\small
+\begin{equation*}
+  \begin{align*}
+    \frac{d[MAPKKK]}{dt} &= -f_{0}[MAPKKK][ras] + b_{0}[MAPKKK\cdot{}ras] + k1_{1}[MAPKKK^{*}\cdot{}pase]\\
+    \frac{d[MAPKKK\cdot{}ras]}{dt} &= f_{0}[MAPKKK][ras] - b_{0}[MAPKKK\cdot{}ras] - k1_{0}[MAPKKK\cdot{}ras]\\
+    \frac{d[ras]}{dt} &= -f_{0}[MAPKKK][ras] + b_{0}[MAPKKK \cdot{}ras] + k1_{0}[MAPKKK\cdot{}ras]\\
+    \frac{d[MAPKKK^{*}]}{dt} &= -f_{1}[MAPKKK^{*}][pase] + b_{1}[MAPKKK^{*}\cdot{}pase] + k1_{0}[MAPKKK\cdot{}ras]\\
+    \frac{d[MAPKKK^{*}\cdot{}pase]}{dt} &= f_{1}[MAPKKK^{*}][pase] - b_{1}[MAPKKK^{*}\cdot{}pase] - k1_{1}[MAPKKK^{*}\cdot{}pase]\\
+    \frac{d[ras]}{dt} &= -f_{1}[MAPKKK^{*}][pase] + b_{1}[MAPKKK^{*}\cdot{}pase] + k1_{1}[MAPKKK^{*}\cdot{}pase]\\
+  \end{align*}
+\end{equation*}
+\normalsize
+
+其 Jacobian 矩阵为：
+
+\small
+\begin{displaymath}
+  Jacobian =
+  \left[
+    \begin{array}{cccccc}
+      -f_{0}[ras] & b_{0} & -f_{0}[MAPKKK] & 0 & k1_{1} & 0 \\
+      f_{0}[ras] & -b_{0} - f_{0} & f_{0}[MAPKKK] & 0 & 0 & 0 \\
+      -f_{0}[ras] & b_{0} + f_{0} & -f_{0}[MAPKKK] & 0 & 0 & 0 \\
+      0 & k1_{0} & 0 & -f_{1}[pase] & b_{1} & -f_{1}[MAPKKK^{*}] \\
+      0 & 0 & 0 & f_{1}[pase] & -b_{1} - f_{1} & f_{1}[MAPKKK^{*}] \\
+      0 & 0 & 0 & -f_{1}[pase] & b_{1} + f_{1} & -f_{0}[MAPKKK^{*}] \\
+    \end{array}
+  \right]
+\end{displaymath}
+\normalsize
+
