@@ -1,8 +1,12 @@
 #include "mp.hpp"
 using namespace std;
 
-// Member-Function
-//// Member-Function Parameter::Parameter: constructor of Class Parameter.
+////////////////////
+// Class: Parameter
+////////////////////
+
+//// Constructor
+//// Parameter: constructor of Class Parameter.
 Parameter::Parameter()
 {
     function_num = 0;
@@ -11,7 +15,9 @@ Parameter::Parameter()
     kf[0] = 0.0;
     kb[0] = 0.0;
 }
-//// Member-Function Parameter::Parameter
+
+//// Constructor
+//// Parameter
 Parameter::Parameter(size_t dimension, double input_f[], double input_b[], double input_kf[], double input_kb[])
 {
     function_num = dimension;
@@ -26,7 +32,9 @@ Parameter::Parameter(size_t dimension, double input_f[], double input_b[], doubl
 	kb[i] = input_kb[i];
     }
 }
-//// Member-Function Parameter::setParameter: set the value.
+
+//// Member-Function
+//// setParameter: set the value.
 void Parameter::setParameter(double input_f[], double input_b[], double input_kf[], double input_kb[])
 {
     if (function_num == 0) {
@@ -39,7 +47,9 @@ void Parameter::setParameter(double input_f[], double input_b[], double input_kf
 	kb[i] = input_kb[i];
     }
 }
-//// Member-Function Parameter::printParameter: print the values.
+
+//// Member-Function
+//// printParameter: print the values.
 void Parameter::printParameter()
 {
     for (size_t i = 0; i != function_num; ++i) {
@@ -50,8 +60,14 @@ void Parameter::printParameter()
 	     << kb[i] << "\n";
     }
 }
+////////////////////
 
-//// Member-Function
+
+////////////////////
+// Class: Concentration
+////////////////////
+
+//// Constructor
 //// Concentration::Concentration: constructor of Class Concentration.
 Concentration::Concentration()
 {
@@ -62,8 +78,8 @@ Concentration::Concentration()
     reactant[0] = 0;
 }
 
-//// Member-Function
-//// Concentration::Concentration: constructor of Class Concentration.
+//// Constructor
+//// Concentration: constructor of Class Concentration.
 Concentration::Concentration(size_t dimension, double now_t, double y[])
 {
     reactant_num = dimension;
@@ -76,14 +92,16 @@ Concentration::Concentration(size_t dimension, double now_t, double y[])
 	reactant[i] = y[i];
     }
 }
+
 //// Member-Function
-//// Concentration::setTime: set the value of time
+//// setTime: set the value of time
 void Concentration::setTime(double now_t)
 {
     time = now_t;
 }
+
 //// Member-Function
-//// Concentration::setConcentration: set the value of Concentrations of reactant.
+//// setConcentration: set the value of Concentrations of reactant.
 void Concentration::setConcentration(size_t dimension, double y[])
 {
     reactant_num = dimension;
@@ -93,8 +111,9 @@ void Concentration::setConcentration(size_t dimension, double y[])
     }
     is_new = false;
 }
+
 //// Member-Function
-//// Concentration::printConcentration: print the value to screen.
+//// printConcentration: print the value to screen.
 void Concentration::printConcentration()
 {
     std::cout << "Time: " << time << "\n";
@@ -105,7 +124,9 @@ void Concentration::printConcentration()
     std::cout << std::endl;
 
 }
-//// Member-Function Concentration::delConcentration: delete the array.
+
+//// Member-Function
+//// delConcentration: delete the array.
 void Concentration::delConcentration()
 // delete the array.
 {
@@ -114,20 +135,25 @@ void Concentration::delConcentration()
     }
     is_new = true;
 }
+////////////////////
 
 
-//// Member-Function
-//// ReactantConcentration::ReactantConcentration: initiation.
-ReactantConcentration::ReactantConcentration(int type, std::vector<std::string> react_name, size_t react_num)
+////////////////////
+// Class: ReactantCocentration
+////////////////////
+
+//// Constructor
+//// ReactantConcentration: initiation.
+ReactantConcentration::ReactantConcentration(int type, std::vector<std::string> react_name, size_t react_num, int output_ord)
 {
     reaction_type = type;
     name = react_name;
     reactant_num = react_num;
+    final_out = output_ord;
 }
 
-
 //// Member-Function
-//// ReactantConcentration::setReactantName: store the names of reactants in the list.
+//// etReactantName: store the names of reactants in the list.
 void ReactantConcentration::setReactantName(const std::vector<std::string> &namelist)
 {
     name = namelist;
@@ -135,7 +161,47 @@ void ReactantConcentration::setReactantName(const std::vector<std::string> &name
 }
 
 //// Member-Function
-//// ReactantConcentration::odeFunction1s1p: needed by <gsl/gsl_odeiv2.h>, 1 stage, 1 phosphorylation.
+//// isStable: whether the ordinary differential equations reach stable, return 1 when stable, return 0 when not stable.
+int ReactantConcentration::isStable()
+{
+    std::vector<Concentration>::size_type vct_length = list.size();
+    long big_num = vct_length / 5;    // using how much number to judge.
+    double threshold = 0.0001;
+    double tmp = 0.0;
+    for (int i = 0; i != big_num; ++i) {
+	tmp += pow((list[vct_length - i - 1].reactant[final_out] -
+		    list[vct_length - i - 2].reactant[final_out]),
+		   2.0);
+    }
+    return (sqrt(tmp / (big_num - 1)) < threshold) ? 1 : 0;
+}
+
+
+//// Member-Function
+//// output: output result to files.
+void ReactantConcentration::outputList(std::ofstream & outfile)
+{
+    outfile << "Time";
+    for (size_t i = 0; i != reactant_num; ++i) {
+    	outfile << "," << name[i];
+    }
+    outfile << "\n";
+    //cout << "size of reaction_1s1p " << reaction_1s1p.list.size();
+    for (std::vector<Concentration>::size_type vi = 0;
+    	 vi != list.size();
+    	 ++vi) {
+    	outfile << list[vi].time;
+    	for (int i = 0; i != reactant_num; ++i) {
+    	    outfile << "," << list[vi].reactant[i];
+    	}
+    	outfile << "\n";
+    }
+    outfile.close();
+    outfile.clear();
+}
+
+//// Member-Function
+//// odeFunction1s1p: needed by <gsl/gsl_odeiv2.h>, 1 stage, 1 phosphorylation.
 int ReactantConcentration::odeFunction1s1p(double t, const double y[], double f[], void *para)
 {
     static_cast<void>(t);    // convert type to avoid unused parameter warning
@@ -167,7 +233,7 @@ int ReactantConcentration::odeFunction1s1p(double t, const double y[], double f[
 }
 
 //// Member-Function
-//// ReactantConcentration::odeJacobian1s1p: needed by <gsl/gsl_odeiv2.h>, 1 stage, 1 phosphorylation.
+//// odeJacobian1s1p: needed by <gsl/gsl_odeiv2.h>, 1 stage, 1 phosphorylation.
 int ReactantConcentration::odeJacobian1s1p(double t, const double y[], double *dfdy, double dfdt[], void *para)
 {
     static_cast<void>(t);    // convert type to avoid unused parameter warning
@@ -237,7 +303,7 @@ int ReactantConcentration::odeJacobian1s1p(double t, const double y[], double *d
 
 
 //// Member-Function
-//// ReactantConcentration::odeFunction1s2p:  needed by <gsl/gsl_odeiv2.h>, 1 stage, 2 phosphorylations.
+//// odeFunction1s2p: needed by <gsl/gsl_odeiv2.h>, 1 stage, 2 phosphorylations.
 int ReactantConcentration::odeFunction1s2p(double t, const double y[], double f[], void *para)
 {
     static_cast<void>(t);    // convert type to avoid unused parameter warning
@@ -284,7 +350,7 @@ int ReactantConcentration::odeFunction1s2p(double t, const double y[], double f[
 
 
 //// Member-Function
-//// ReactantConcentration::odeJacobian1s2p:  needed by <gsl/gsl_odeiv2.h>, 1 stage, 2 phosphorylations.
+//// odeJacobian1s2p:  needed by <gsl/gsl_odeiv2.h>, 1 stage, 2 phosphorylations.
 int ReactantConcentration::odeJacobian1s2p(double t, const double y[], double *dfdy, double dfdt[], void *para)
 {
     static_cast<void>(t);    // convert type to avoid unused parameter warning
@@ -403,11 +469,13 @@ int ReactantConcentration::odeJacobian1s2p(double t, const double y[], double *d
 
 
 //// Member-Function
-//// ReactantConcentration::odeRun: using gsl to solve ode.
+//// odeRun: using gsl to solve ode.
 void ReactantConcentration::odeRun(double start_t, double end_t, Parameter *params, double reactant[], double pacelen)
 {
     // initiate.
     double *y = reactant;
+    double time_span = end_t - start_t;    // used to reset start_t and end_t.
+    
     typedef int (* Func)(double t, const double y[], double f[], void *para);
     typedef int (* Jac)(double t, const double y[], double *dfdy, double dydt[], void *para);
 
@@ -437,7 +505,7 @@ void ReactantConcentration::odeRun(double start_t, double end_t, Parameter *para
     do {
 	long times = static_cast<long>((end_t - start_t)/pacelen);
 	for (long i = 0; i != times; ++i) {
-	    double ti = i * pacelen + start_t;
+	    double ti = pacelen + start_t;
 	    int status = gsl_odeiv2_driver_apply(d, &start_t, ti, y);
 	    if (status != GSL_SUCCESS) {
 		printf("Error, return value = %d\n", status);
@@ -454,16 +522,22 @@ void ReactantConcentration::odeRun(double start_t, double end_t, Parameter *para
 	    //reaction.printConcentration();
 	    list.push_back(reaction);    // record the situation at ti.
 	}
-    } while (0);// *********************** add here
+	//std::cout << start_t << std::endl;
+	end_t = start_t + time_span;
+	//std::cout << end_t << std::endl;
+    } while (!isStable());
 
     //outfile.close();
     //outfile.clear();
     gsl_odeiv2_driver_free (d);
 }
+////////////////////
 
-
+		
+////////////////////
 // Functions
-
+////////////////////
+		
 //// Function
 //// initiateParameter: set the parameter array to a certain velue.
 int initiateParameter(double par[], int len, double value)
@@ -501,3 +575,18 @@ std::vector<std::string> reactantName(int functype)
 
     return name_vector;
 }
+
+//// Function
+//// chemNumber: return the number of chemical reaction according to reaction type.
+int chemNumber(int functype)
+{
+    switch (functype) {
+    case 1:
+	return 2;
+    case 2:
+	return 2;
+    default:
+	std::cout << "Wrong input of reaction type in chemNumber!" << std::endl;
+    }
+}
+////////////////////
