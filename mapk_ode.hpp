@@ -62,6 +62,15 @@ public:
     int final_out;    // the order of final output.
     ReactantConcentration(int type, std::vector<std::string> react_name, size_t react_num, int output_ord);
 
+    //// setReactantName: set the name of reactant in certain reactions.
+    void setReactantName(const std::vector<std::string> &namelist);
+    //// odeRun: using gsl to solve ode.
+    void odeRun(double start_t, double end_t, Parameter *params, double reactant[], double pacelen);
+    //// outputList: output result to file.
+    void outputList(std::ofstream & outfile);
+    
+private:
+    
     //// odeFunction1s1p: needed by <gsl/gsl_odeiv2.h>, 1 stage, 1 phosphorylation.
     static int odeFunction1s1p(double t, const double y[], double f[], void *para);
     //// odeJacobian1s1p: needed by <gsl/gsl_odeiv2.h>, 1 stage, 1 phosphorylation.
@@ -69,14 +78,23 @@ public:
     //// odeFunction1s2p: needed by <gsl/gsl_odeiv2.h>, 1 stage, 2 phosphorylations.
     static int odeFunction1s2p(double t, const double y[], double f[], void *para);
     //// odeJacobian1s2p: needed by <gsl/gsl_odeiv2.h>, 1 stage, 2 phosphorylations.
-    static int odeJacobian1s2p(double t, const double y[], double *dfdy, double dydt[], void *para);   
-    // setReactantName: set the name of reactant in certain reactions.
-    void setReactantName(const std::vector<std::string> &namelist);
-    //// odeRun: using gsl to solve ode.
-    void odeRun(double start_t, double end_t, Parameter *params, double reactant[], double pacelen);
-    //// outputList: output result to file.
-    void outputList(std::ofstream & outfile);
-private:
+    static int odeJacobian1s2p(double t, const double y[], double *dfdy, double dydt[], void *para);
+    //// odeFunction2s1p: needed by <gsl/gsl_odeiv2.h>, 2 stages, 1 phosphorylation.
+    static int odeFunction2s1p(double t, const double y[], double f[], void *para);
+    //// odeJacobian2s1p: needed by <gsl/gsl_odeiv2.h>, 2 stages, 1 phosphorylation.
+    static int odeJacobian2s1p(double t, const double y[], double *dfdy, double dydt[], void *para);
+    //// odeFunction2s2p: needed by <gsl/gsl_odeiv2.h>, 2 stages, 2 phosphorylations.
+    static int odeFunction2s2p(double t, const double y[], double f[], void *para);
+    //// odeJacobian2s1p: needed by <gsl/gsl_odeiv2.h>, 2 stages, 2 phosphorylations.
+    static int odeJacobian2s2p(double t, const double y[], double *dfdy, double dydt[], void *para);
+    //// odeFunction3s1p: needed by <gsl/gsl_odeiv2.h>, 3 stages, 1 phosphorylation.
+    static int odeFunction3s1p(double t, const double y[], double f[], void *para);
+    //// odeJacobian3s1p:  needed by <gsl/gsl_odeiv2.h>, 3 stages, 1 phosphorylation.
+    static int odeJacobian3s1p(double t, const double y[], double *dfdy, double dydt[], void *para);
+    //// odeFunction3s2p: needed by <gsl/gsl_odeiv2.h>, 3 stages, 2 phosphorylations.
+    static int odeFunction3s2p(double t, const double y[], double f[], void *para);
+    //// odeJacobian3s2p:  needed by <gsl/gsl_odeiv2.h>, 3 stages, 2 phosphorylations.
+    static int odeJacobian3s2p(double t, const double y[], double *dfdy, double dydt[], void *para);
     //// judgeStable: whether the ordinary differential equations reach stable.
     int isStable();
 };

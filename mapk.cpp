@@ -1,4 +1,6 @@
 //-*-coding:utf-8-*-
+//Author: Wolfson
+//Date: Nov. 29, 2015
 #include <boost/program_options.hpp>
 #include <boost/program_options/cmdline.hpp>
 #include <boost/program_options/config.hpp>
@@ -12,7 +14,7 @@
 #include <boost/program_options/value_semantic.hpp>
 #include <boost/program_options/variables_map.hpp>
 #include <boost/program_options/version.hpp>
-#include "mp.hpp"
+#include "mapk_ode.hpp"
 
 
 using namespace std;
@@ -146,3 +148,4 @@ int main(int argc, char *argv[])
     return 0;
     
 }
+////////////////////
