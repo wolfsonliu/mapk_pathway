@@ -5,7 +5,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "mapk_ode.hpp"
-using namespace std;
 
 
         
@@ -204,7 +203,7 @@ void Parameter::outputParameter(std::ofstream & outfile)
 //// Member-Function: outputParameter
 //// Output parameter to file.
 {
-    outfile << "num," << "f," << "b," << "kf," << "kb" << "\n";
+    
     for (size_t i = 0; i != function_num; ++i) {
         outfile << i << ","
                 << f[i] << ","
@@ -222,40 +221,46 @@ void Parameter::outputParameter(std::ofstream & outfile)
 ////////////////////
 
 
-Concentration::Concentration()
-//// Constructor: Concentration
-//// Constructor of Class Concentration.
-{
-    is_new = true;
-    reactant_num = 0;
-    time = 0;
-    reactant = new double[1];
-    reactant[0] = 0;
-}
-
-
-Concentration::Concentration(size_t dimension, double now_t, double y[])
+Concentration::Concentration(size_t dimension)
 //// Constructor: Concentration
 //// Constructor of Class Concentration.
 {
     reactant_num = dimension;
-    if (reactant_num == 0) {
-        std::cout << "reactant number is not set.";
-        exit(1);
-    }
-    reactant = new double [reactant_num];
-    time = now_t;
+    reactant = new double[dimension];
     for (int i = 0; i != reactant_num; ++i) {
-        reactant[i] = y[i];
+        reactant[i] = 0.0;
     }
+    is_new = true;
 }
 
 
-void Concentration::setTime(double now_t)
-//// Member-Function: setTime
-//// Set the value of time
+Concentration::Concentration(size_t dimension, double y[])
+//// Constructor: Concentration
+//// Constructor of Class Concentration.
 {
-    time = now_t;
+    reactant_num = dimension;
+    reactant = new double [dimension];
+    for (int i = 0; i != reactant_num; ++i) {
+        reactant[i] = y[i];
+    }
+    is_new = false;
+}
+
+
+void Concentration::setConcentration(double y[])
+//// Member-Function: setConcentration
+//// Set the value of Concentrations of reactant.
+{
+    if (reactant_num == 0) {
+        std::cout << "Concentration reactant_num is 0.\n";
+        exit(1);
+    }
+    reset();
+    reactant = new double [reactant_num];
+    for (size_t i = 0; i != reactant_num; ++i) {
+        reactant[i] = y[i];
+    }
+    is_new = false;
 }
 
 
@@ -264,6 +269,7 @@ void Concentration::setConcentration(size_t dimension, double y[])
 //// Set the value of Concentrations of reactant.
 {
     reactant_num = dimension;
+    reset();
     reactant = new double [reactant_num];
     for (size_t i = 0; i != reactant_num; ++i) {
         reactant[i] = y[i];
@@ -275,7 +281,6 @@ void Concentration::printConcentration()
 //// Member-Function: printConcentration
 //// Print the value to screen.
 {
-    std::cout << "Time: " << time << "\n";
     std::cout << "Value: ";
     for (size_t i = 0; i != reactant_num; ++i) {
         std::cout << reactant[i] << "\t";
@@ -285,8 +290,8 @@ void Concentration::printConcentration()
 }
 
 
-void Concentration::delConcentration()
-//// Member-Function: delConcentration
+void Concentration::reset()
+//// Member-Function: reset
 //// Delete the array.
 {
     if (!is_new) {
@@ -294,6 +299,9 @@ void Concentration::delConcentration()
     }
     is_new = true;
 }
+
+
+
 ////////////////////
 
 
@@ -323,34 +331,65 @@ void ReactantConcentration::setReactantName(const std::vector<std::string> &name
 }
 
 
-int ReactantConcentration::isStable()
+bool ReactantConcentration::isStable()
 //// Member-Function: isStable
 //// Whether the ordinary differential equations reach stable,
 //// return 1 when stable, return 0 when not stable.
 {
     std::vector<Concentration>::size_type vct_length = list.size();
-    long big_num = vct_length / 5;    // using how much number to judge.
+    long   big_num = vct_length / 5;
+    // using how much number to judge.
     double threshold = 0.001;
     double tmp = 0.0;
     for (int i = 0; i != big_num; ++i) {
-        tmp += pow((list[vct_length - i - 1].reactant[final_out] -
-                    list[vct_length - i - 2].reactant[final_out]),
+        tmp += pow((list[vct_length - i - 1][final_out] -
+                    list[vct_length - i - 2][final_out]),
                    2.0);
     }
     return
         (
          (sqrt(tmp / (big_num - 1)) /
-          list[vct_length -1].reactant[final_out]) <
+          list[vct_length -1][final_out]) <
          threshold
-         ) ? 1 : 0;
+         ) ? true : false;
 }
 
 
+bool ReactantConcentration::isMonotone(int order)
+//// Member-Function: isMonotone
+//// Whether the values are monotonous,
+//// return 1 when monotonous, return 0 when not.
+{
+    bool judgement = true;
+    int  sign;
+    if ((list.back()[order] -
+         list.front()[order]) > 0) {
+        sign = 1;
+    } else if ((list.back()[order] -
+                list.front()[order]) < 0) {
+        sign = -1;
+    }
+        
+    for (std::vector<Concentration>::iterator list_iter = list.begin();
+         list_iter != list.end() - 1;
+         ++list_iter) {
+        if (sign > 0 && ((*(list_iter + 1))[order] -
+                         (*list_iter)[order]) < 0) {
+            judgement = false;
+            break;
+        } else if (sign < 0 && ((*(list_iter + 1))[order] -
+                                (*list_iter)[order]) > 0) {
+            judgement = false;
+            break;
+        }
+    }
+    return judgement;   
+}
 void ReactantConcentration::outputList(std::ofstream & outfile)
 //// Member-Function: outputList
 //// Output result to files.
 {
-    if (reach_stable == true) {
+    if (reach_stable == true && isMonotone(final_out)) {
         outfile << "Time";
         for (size_t i = 0; i != reactant_num; ++i) {
             outfile << "," << name[i];
@@ -361,32 +400,34 @@ void ReactantConcentration::outputList(std::ofstream & outfile)
         for (std::vector<Concentration>::size_type vi = 0;
              vi != list.size();
              ++vi) {
-            outfile << list[vi].time;
+            outfile << time[vi];
             for (int i = 0; i != reactant_num; ++i) {
-                outfile << "," << list[vi].reactant[i];
+                outfile << "," << list[vi][i];
             }
             outfile << "," << dissipation[vi];
             outfile << "\n";
         }
-    } else {
+    } else if (!isMonotone(final_out)) {
+        outfile << "Not monotone\n";
+    } else if (reach_stable == false) {
         outfile << "Not reach stable with time: "
-                << list.back().time
+                << time.back()
                 << ".\n";
     }
 }
 
 
-void ReactantConcentration::outputStable(std::ofstream & outfile)
+void ReactantConcentration::outputFinal(std::ofstream & outfile)
 //// Member-Function: outputStable
 //// Output the stable situation to file.
 {
-    if (reach_stable == true) {
+    if (reach_stable == true && isMonotone(final_out)) {
         for (std::vector<Concentration>::size_type vi = 0;
              vi != list.size();
              ++vi) {
-            outfile << list[vi].time;
+            outfile << time[vi];
             for (int i = 0; i != reactant_num; ++i) {
-                outfile << "," << list[vi].reactant[i];
+                outfile << "," << list[vi][i];
             }
             outfile << "," << dissipation[vi];
             outfile << "\n";
@@ -395,11 +436,56 @@ void ReactantConcentration::outputStable(std::ofstream & outfile)
 }
 
 
-void ReactantConcentration::odeRun(double start_t,
-                                   double end_t,
+double ReactantConcentration::getFinalOutput()
+//// Member-Function: getFinalOutput
+//// Return the output reactant concentration values at stable stage.
+{
+    if (list.size() == 0) {
+        std::cout << "Not run ordinary differential equations yet.\n";
+        exit(1);
+    } else if (reach_stable == false) {
+        std::cout << "Not reach stable yet.\n";
+        exit(1);
+    }
+    return list.back()[final_out];
+}
+
+
+double ReactantConcentration::getFinalTime()
+//// Member-Function: getFinalTime
+//// Return the time at stable stage.
+{
+    if (list.size() == 0) {
+        std::cout << "Not run ordinary differential equations yet.\n";
+        exit(1);
+    } else if (reach_stable == false) {
+        std::cout << "Not reach stable yet.\n";
+        exit(1);
+    }
+    return time.back();
+}
+
+
+double ReactantConcentration::getFinalDissipation()
+//// Member-Function: getFinalDissipation
+//// Return the energy dissipation at stable stage.
+{
+    if (list.size() == 0) {
+        std::cout << "Not run ordinary differential equations yet.\n";
+        exit(1);
+    } else if (reach_stable == false) {
+        std::cout << "Not reach stable yet.\n";
+        exit(1);
+    }
+    return dissipation.back();
+}
+
+
+void ReactantConcentration::odeRun(double     start_t,
+                                   double     end_t,
                                    Parameter *params,
-                                   double reactant[],
-                                   double pacelen)
+                                   double     reactant[],
+                                   double     pacelen)
 //// Member-Function: odeRun
 //// Using gsl to solve ode.
 {
@@ -407,15 +493,15 @@ void ReactantConcentration::odeRun(double start_t,
     double *y = reactant;
     double time_span = end_t - start_t;    // used to reset start_t and end_t.
     
-    typedef int (* Func)(double t,
+    typedef int (* Func)(double       t,
                          const double y[],
-                         double f[],
-                         void *para);
-    typedef int (* Jac)(double t,
-                        const double y[],
-                        double *dfdy,
-                        double dydt[],
-                        void *para);
+                         double       f[],
+                         void        *para);
+    typedef int (* Jac)(double        t,
+                        const double  y[],
+                        double       *dfdy,
+                        double        dydt[],
+                        void         *para);
 
     Func odeFunction;    // function pointer.
     Jac odeJacobian;    // function pointer.
@@ -450,7 +536,7 @@ void ReactantConcentration::odeRun(double start_t,
                                                          1e-6,
                                                          0.0);
 
-    Concentration reaction;    // temporary store y.
+    Concentration reaction(reactant_num);    // temporary store y.
 
     int count_while = 0;
     // calculate.
@@ -458,21 +544,21 @@ void ReactantConcentration::odeRun(double start_t,
         long times = static_cast<long>((end_t - start_t)/pacelen);
         for (long i = 0; i != times; ++i) {
             double ti = pacelen + start_t;
-            int status = gsl_odeiv2_driver_apply(d, &start_t, ti, y);
+            int    status = gsl_odeiv2_driver_apply(d, &start_t, ti, y);
             if (status != GSL_SUCCESS) {
                 printf("Error, return value = %d\n", status);
                 break;
             }
-            reaction.setTime(ti);    // set the time of reaction to ti.
-            reaction.setConcentration(reactant_num, y);
+            reaction.setConcentration(y);
             // set the concentrate of reactant to y[].
+            time.push_back(ti);
             list.push_back(reaction);    // record the situation at ti.
             dissipation.push_back(calculateDissipation(y, params));
         }
         //std::cout << start_t << std::endl;
         end_t = start_t + time_span;
         //std::cout << end_t << std::endl;
-        ++ count_while;
+        ++count_while;
 
         if (count_while > 1000) {
             reach_stable = false;
@@ -2099,7 +2185,7 @@ int ReactantConcentration::odeFunction3s2p(double t,
     // mapk + map2k2p <b6==f6> mapk_map2k2p <kb6-=kf6> mapkp + map2k2p
     // mapkp + mkp <b7==f7> mapkp_mkp <kb7-=kf7> mapk + mkp
     // mapkp + map2k2p <b8==f8> mapkp_map2k2p <kb8-=kf8> mapk2p + map2k2p
-    // mapkp + mkp <b9==f9> mapkp_mkp <kb9-=kf9> mapkp + mkp
+    // mapk2p + mkp <b9==f9> mapkp_mkp <kb9-=kf9> mapkp + mkp
 
     
     // map3k
@@ -3067,7 +3153,7 @@ void ReactantConcentration::propensityFunction3s2p(const double y[],
     // mapk + map2k2p <b6==f6> mapk_map2k2p <kb6-=kf6> mapkp + map2k2p
     // mapkp + mkp <b7==f7> mapkp_mkp <kb7-=kf7> mapk + mkp
     // mapkp + map2k2p <b8==f8> mapkp_map2k2p <kb8-=kf8> mapk2p + map2k2p
-    // mapkp + mkp <b9==f9> mapkp_mkp <kb9-=kf9> mapkp + mkp
+    // mapk2p + mkp <b9==f9> mapkp_mkp <kb9-=kf9> mapkp + mkp
 
     prob[0] = params.f[0] * map3k * ras;
     prob[1] = params.b[0] * map3k_ras;
@@ -3110,8 +3196,359 @@ void ReactantConcentration::propensityFunction3s2p(const double y[],
     prob[38] = params.kf[9] * mapk2p_mkp;
     prob[39] = params.kb[9] * mapkp * mkp;
 }
+////////////////////
+
+
+////////////////////
+// Class: Stable
+////////////////////
+
+Stable::Stable(double i, double o, double t, double d)
+//// Constructor: Stable
+////
+{
+    input       = i;
+    output      = o;
+    time        = t;
+    dissipation = d;
+}
+
+
+void Stable::setValue(double i, double o, double t, double d)
+//// Member-Function: setValue
+//// Return value of according.
+{
+    input       = i;
+    output      = o;
+    time        = t;
+    dissipation = d;
+}
+
+
+double Stable::getValue(int according)
+//// Member-Function: getValue
+//// Return value of according.
+{
+    switch(according) {
+    case 1:
+        return input;
+    case 2:
+        return output;
+    case 3:
+        return time;
+    case 4:
+        return dissipation;
+    }    
+}
+bool Stable::lt(Stable& a, Stable& b, int according)
+//// Member-Function: compare
+//// Compare the value of Stable according to one of member.
+{
+    switch(according) {
+    case 1:
+        return (a.input < b.input);
+    case 2:
+        return (a.output < b.output);
+    case 3:
+        return (a.time < b.time);
+    case 4:
+        return (a.dissipation < b.dissipation);
+    }
+}
+
+
+bool Stable::gt(Stable& a, Stable& b, int according)
+//// Member-Function: compare
+//// Compare the value of Stable according to one of member.
+{
+    switch(according) {
+    case 1:
+        return (a.input > b.input);
+    case 2:
+        return (a.output > b.output);
+    case 3:
+        return (a.time > b.time);
+    case 4:
+        return (a.dissipation > b.dissipation);
+    }
+}
+
+
+bool Stable::eq(Stable& a, Stable& b, int according)
+//// Member-Function: compare
+//// Compare the value of Stable according to one of member.
+{
+    switch(according) {
+    case 1:
+        return (a.input = b.input);
+    case 2:
+        return (a.output = b.output);
+    case 3:
+        return (a.time = b.time);
+    case 4:
+        return (a.dissipation = b.dissipation);
+    }
+}
+////////////////////
+
+
+////////////////////
+// Class: StableList
+////////////////////
+
+StableList::StableList(int type)
+//// Constructor: StableList
+////
+{
+    reaction_type = type;
+    switch (reaction_type) {
+    case 1:
+        function_num = 2;
+        reactant_num = 6;
+        break;
+    case 2:
+        function_num = 4;
+        reactant_num = 9;
+        break;
+    case 3:
+        function_num = 4;
+        reactant_num = 11;
+        break;
+    case 4:
+        function_num = 6;
+        reactant_num = 14;
+        break;
+    case 5:
+        function_num = 6;
+        reactant_num = 16;
+        break;
+    case 6:
+        function_num = 10;
+        reactant_num = 22;
+        break;
+    default:
+        std::cout << "Wrong input of reaction type in RCStable!"
+                  << std::endl;
+    }
+}
+
+
+StableList::StableList(int         type,
+                       int         functionnum,
+                       int         reactantnum)
+//// Constructor: StableList
+////
+{
+    reaction_type = type;
+    function_num = functionnum;
+    reactant_num = reactantnum;
+}
+
+
+void StableList::addBack(double iput,
+                         double oput,
+                         double t,
+                         double e)
+//// Member-Function: addBack
+//// Add values to the end.
+{
+    Stable tmp(iput, oput, t, e);
+    situation.push_back(tmp);
+}
+
+
+void StableList::addInter(std::vector<Stable>::iterator it,
+                          double                      iput,
+                          double                      oput,
+                          double                      t,
+                          double                      e)
+//// Member-Function: addInter
+//// Insert values according to iterator.
+{
+    Stable tmp(iput, oput, t, e);
+    situation.insert(it, tmp);
+}
+
+
+void StableList::addInter(StableList::iterator   it,
+                          std::list<Stable>::value_type value)
+//// Member-Function: addInter
+//// Insert values according to iterator.
+{
+    situation.insert(it, value);
+}
+
+bool StableList::compa(Stable& a, Stable& b)
+{
+    return (a.input < b.input);
+}
+bool StableList::compb(Stable& a, Stable& b)
+{
+    return (a.output < b.output);
+}
+bool StableList::compc(Stable& a, Stable& b)
+{
+    return (a.time < b.time);
+}
+bool StableList::compd(Stable& a, Stable& b)
+{
+    return (a.dissipation < b.dissipation);
+}
+
+void StableList::sortList(int according)
+//// Member-Function: sort
+//// Sort the vector.
+{
+    typedef bool (* CompFunc)(Stable& a, Stable& b);
+    CompFunc mycomp;
+    switch(according) {
+    case 1:
+        mycomp = compa;
+        break;
+    case 2:
+        mycomp = compb;
+        break;
+    case 3:
+        mycomp = compc;
+        break;
+    case 4:
+        mycomp = compd;
+        break;
+    }
+    std::sort(situation.begin(),
+              situation.end(),
+              mycomp);
+}
+
+
+std::vector<Stable>::iterator StableList::max(int according)
+//// Member-Function: maxOutput
+//// Return the max output value.
+{
+    typedef bool (* CompFunc)(Stable& a, Stable& b);
+    CompFunc mycomp;
+    switch(according) {
+    case 1:
+        mycomp = compa;
+        break;
+    case 2:
+        mycomp = compb;
+        break;
+    case 3:
+        mycomp = compc;
+        break;
+    case 4:
+        mycomp = compd;
+        break;
+    }
+    return std::max_element(situation.begin(),
+                            situation.end(),
+                            mycomp);
+}
+
+
+std::vector<Stable>::iterator StableList::unSufficient()
+//// Member-Function: notSufficient
+//// Return the first pointer if the gap between output is too large.
+{
+    if (situation.size() < 2) {
+        return situation.end();
+    }
+    double threshold = 0.01 * max(2)->output;
+    for (std::vector<Stable>::iterator ii = situation.begin();
+         ii != situation.end() - 1;
+         ++ii) {
+        if (std::fabs((ii + 1)->output - ii->output) > threshold) {
+            return ii;
+        }
+    }
+    return situation.end();
+}
+
+
+void StableList::outputList(std::ofstream& outfile)
+//// Member-Function: outputList
+//// Output result to file.
+{
+    
+    for (std::vector<Stable>::iterator ii = situation.begin();
+         ii != situation.end();
+         ++ii) {
+        outfile << ii->input << ","
+                << ii->output << ","
+                << ii->time << ","
+                << ii->dissipation << "\n";
+    } // for.
+}
+
+
+std::vector<Stable>::iterator StableList::getPercent(double percent,
+                                                     int    according)
+//// Member-Function: getPercent
+//// Return the iterator pointed to situation with value near specific percentage.
+{
+    //sortList(according);
+    double value = percent * max(according)->output;
+    double smallest;
+    double *p = new double[situation.size()];
+    std::vector<Stable>::iterator iter;
+    for (size_t i = 0;
+         i != situation.size();
+         ++i) {
+        p[i] = std::fabs(situation[i].getValue(according) - value);
+    } // for.
+    smallest = *std::min_element(p, p + situation.size());
+    for (size_t i = 0;
+         i != situation.size();
+         ++i) {
+        ++iter;
+        if (p[i] == smallest) {
+            return iter;
+        } // if.
+    } // for.
+    return situation.end();
+}
+
+
+double* StableList::getArray(int according)
+//// Member-Function: getArray
+//// Return double[] of values using according to specific.
+{
+    double* tmp = new double[situation.size()];
+    for (size_t i = 0; i != situation.size(); ++i) {
+        tmp[i] = situation[i].getValue(according);
+    }
+    return tmp;
+}
+////////////////////
 
 
 
 ////////////////////
+// Class: DataInterpolation
+////////////////////
 
+void DataInterpolation::interpolate(const double* xarray,
+                                    const double* yarray,
+                                    long          length,
+                                    long          number)
+//// Member-Function: interpolate
+//// Interpolate data.
+{
+    double pace = (std::max_element(xarray, xarray + length) -
+                   std::min_element(xarray, xarray + length)) / number;
+    double xi, yi;
+    gsl_interp_accel *acc = gsl_interp_accel_alloc ();
+    gsl_spline *spline = gsl_spline_alloc(gsl_interp_cspline, length);
+    gsl_spline_init(spline, xarray, yarray, length);
+    for (xi = x[0]; xi < x[length - 1]; xi += pace) {
+        yi = gsl_spline_eval(spline, xi, acc);
+        x.push_back(xi);
+        y.push_back(yi);
+    }// for.
+    
+    // free memory.
+    gsl_spline_free (spline);
+    gsl_interp_accel_free (acc);
+}
+////////////////////

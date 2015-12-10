@@ -42,7 +42,7 @@ public:
                 long sample);
     //// operator[]:
     //// Used for subscript operator overloading.
-    double &operator[](int i);
+    double& operator[](int i);
     //// setLatin:
     //// Set and generate random values.
     void setLatin(double lower, double upper, long sample);

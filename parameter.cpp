@@ -57,13 +57,14 @@ void LatinVector::generateRandomList()
 }
 
 
-double &LatinVector::operator[](int i)
+double& LatinVector::operator[](int i)
 //// Member-Function: operator[]
 //// Used for subscript operator overloading.
 {
     if (i >= sample_num) {
         std::cout << "LatinVector: subscript operator out of bounds."
                   << "\n";
+        exit(1);
     }
     return latin_vector[i];
 }
