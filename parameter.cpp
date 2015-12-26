@@ -12,7 +12,9 @@
 ////////////////////
 
 
-LatinVector::LatinVector(double lower, double upper, long sample)
+LatinVector::LatinVector(const double& lower,
+                         const double& upper,
+                         const long&   sample)
 //// Constructor: LatinVector
 {
     if (lower > upper) {
@@ -70,7 +72,9 @@ double& LatinVector::operator[](int i)
 }
 
 
-void LatinVector::setLatin(double lower, double upper, long sample)
+void LatinVector::setLatin(const double& lower,
+                           const double& upper,
+                           const long&   sample)
 //// Member-Function: setLatin
 //// Set and generate random values.
 {

@@ -6,6 +6,8 @@
 
 #include <iostream>
 #include <fstream>
+#include <sstream>
+#include <memory>
 #include <string>
 #include <vector>
 #include <list>
@@ -19,100 +21,158 @@
 #include <gsl/gsl_spline.h>
 
 
+class Parameter;
+class Concentration;
+class ReactantConcentration;
+class Stable;
+class StableList;
+class DataInterpolation;
+
+////////////////////
+// Functions:
+////////////////////
+
+std::ostream& operator<<(std::ostream&          out,
+                         Parameter&             para);
+std::ostream& operator<<(std::ostream&          out,
+                         Concentration&         conc);
+std::ostream& operator<<(std::ostream&          out,
+                         ReactantConcentration& rc);
+std::ostream& operator<<(std::ostream&          out,
+                         StableList&            sl);
+std::ostream& operator<<(std::ostream&          out,
+                         DataInterpolation&     di);
+std::ostream& operator<<(std::ostream&          out,
+                         Stable&                stb);
+bool isStableUseEndSome(std::unique_ptr<double[]>&  x,
+                        std::unique_ptr<double[]>&  y,
+                        size_t                      size,
+                        double                      threshold = 0.0001,
+                        int                         endnum    = 5);
+//// Function: isStableUseEndSome
+//// Whether reach stable,
+//// return true when stable, return false when not stable.
+////////////////////
+
+
 ////////////////////
 // Classes
 ////////////////////
 
 
-class Parameter
+class Parameter: public std::enable_shared_from_this<Parameter>
 //// Class: Parameter
 //// Store parameters in chemical equations.
 {
+    // shared_from_this();
     size_t function_num;
+    double calculateATP();
 public:
     // S + E <b==f> [SE] <k2-=k1> S* + E
-    double *f;    // forward reaction coefficient for reaction 1.
-    double *b;    // backward reaction coefficient for reaction 1.
-    double *kf;    // forward reaction coefficient for reaction 2.
-    double *kb;    // backward reaction coefficient for reaction 2, usually very small.
+    std::unique_ptr<double[]> f;
+    // forward reaction coefficient for reaction 1.
+    std::unique_ptr<double[]> b;
+    // backward reaction coefficient for reaction 1.
+    std::unique_ptr<double[]> kf;
+    // forward reaction coefficient for reaction 2.
+    std::unique_ptr<double[]> kb;
+    double                    atp;
+    // backward reaction coefficient for reaction 2, usually very small.
     // Constructor
     Parameter():
         function_num(0),
-        f(0),
-        b(0),
-        kf(0),
-        kb(0){}//
-    Parameter(size_t dimension);     // constructor.
-    Parameter(size_t dimension,
-              double input_f[],
-              double input_b[],
-              double input_kf[],
-              double input_kb[]);    // constructor.
-    Parameter(size_t dimension,
-              const double &input_f,
-              const double &input_b,
-              const double &input_kf,
-              const double &input_kb);    // constructor.
+        atp(0.0) {}//
+    Parameter(const int dimension);
+    Parameter(const int dimension,
+              const std::unique_ptr<double[]>& input_f,
+              const std::unique_ptr<double[]>& input_b,
+              const std::unique_ptr<double[]>& input_kf,
+              const std::unique_ptr<double[]>& input_kb);
+    Parameter(const int dimension,
+              const double& input_f,
+              const double& input_b,
+              const double& input_kf,
+              const double& input_kb);
+    Parameter(const Parameter& para);
+    
+    // Destructor
+    virtual ~Parameter() {}
+    // Friend
+    friend std::ostream& operator<<(std::ostream&    out,
+                                    Parameter&       para);
+    // Operator
+    //// operator=
+    //////// Overload operator=.
+    Parameter& operator=(const Parameter& para);
     
     // Member-Function
     //// initParameter:
     //////// Initiate parameter not in declaration.
-    void initParameter(size_t dimension);
-    void initParameter(size_t dimension,
-                       const double &input_f,
-                       const double &input_b,
-                       const double &input_kf,
-                       const double &input_kb);
-    void initParameter(size_t dimension,
-                       double input_f[],
-                       double input_b[],
-                       double input_kf[],
-                       double input_kb[]);
+    void initParameter(const int& dimension);
+    void initParameter(const int& dimension,
+                       const double& input_f,
+                       const double& input_b,
+                       const double& input_kf,
+                       const double& input_kb);
+    void initParameter(const int& dimension,
+                       const std::unique_ptr<double[]>& input_f,
+                       const std::unique_ptr<double[]>& input_b,
+                       const std::unique_ptr<double[]>& input_kf,
+                       const std::unique_ptr<double[]>& input_kb);
     //// setParameter:
     //////// Set the values.
-    void setParameter(double input_f[],
-                      double input_b[],
-                      double input_kf[],
-                      double input_kb[]);
-    void setParameter(const double &input_f,
-                      const double &input_b,
-                      const double &input_kf,
-                      const double &input_kb);
-    void setParameter(double input[]);
-    void setParameter(std::vector<double> &input);
+    void setParameter(const std::unique_ptr<double[]>& input_f,
+                      const std::unique_ptr<double[]>& input_b,
+                      const std::unique_ptr<double[]>& input_kf,
+                      const std::unique_ptr<double[]>& input_kb);
+    void setParameter(const double& input_f,
+                      const double& input_b,
+                      const double& input_kf,
+                      const double& input_kb);
+    void setParameter(const std::unique_ptr<double[]>& input);
+    void setParameter(const std::vector<double>& input);
     //// printParameter:
     //////// Print the values.
     void printParameter();
-    //// outputParameter:
-    //////// Output parameter to file.
-    void outputParameter(std::ofstream & outfile);
+
+    
 };    // remember the ;
 
 
-class Concentration
+class Concentration: public std::enable_shared_from_this<Concentration>
 //// Class: Concentration
 //// store Concentration values with time.
 {
     bool is_new;
     size_t reactant_num;
-    double *reactant;    // store reactant concentrate at time.
+    std::unique_ptr<double[]> reactant;
+    // store reactant concentrate at time.
 public:
     // Constructor
     Concentration():
         is_new(true),
-        reactant_num(0),
-        reactant(0){}
-    Concentration(size_t dimension);
-    Concentration(size_t dimension,
-                  double y[]);
+        reactant_num(0) {}//
+    Concentration(const size_t& dimension);
+    Concentration(const size_t& dimension,
+                  const std::unique_ptr<double[]>& y);
+    Concentration(const Concentration& conc);
+    // Destructor
+    virtual ~Concentration() {}
+    // Friend
+    friend std::ostream& operator<<(std::ostream&  out,
+                                    Concentration& conc);
 
-
+    // Operator
+    //// operator=
+    //////// Overload operator=.
+    Concentration& operator=(const Concentration& conc);
     // Member-Function
     //// setConcentration:
     //////// Set the concentrate values.
+    void setConcentration(const std::unique_ptr<double[]>& y);
     void setConcentration(double y[]);
-    void setConcentration(size_t dimension,
-                          double y[]);
+    void setConcentration(const size_t& dimension,
+                          const std::unique_ptr<double[]>& y);
     //// printConcentration:
     //////// Print the values.
     void printConcentration();    
@@ -121,10 +181,10 @@ public:
     void reset();
     //// size:
     //////// Return the size of reactant.
-    inline size_t size();
-    //// operator[]:
+    size_t size();
+    //// get():
     //////// Used for subscript operator overloading.
-    inline double &operator[](int i);
+    double get(const int ord);
 };
 
 
@@ -146,18 +206,29 @@ public:
     // the order of final output.
 
     // Constructor
-    ReactantConcentration(int type);
+    ReactantConcentration():
+        reach_stable(true),
+        reaction_type(0),
+        function_num(0),
+        final_out(0) {}
+    ReactantConcentration(const int& type);
 
+    // Destructor
+    virtual ~ReactantConcentration() {}
+    // Friend
+    friend std::ostream& operator<<(std::ostream&          out,
+                                    ReactantConcentration& rc);
+    friend bool isStableUseEndSome(std::unique_ptr<double[]>& thevector,
+                                   size_t size,
+                                   double threshold,
+                                   int    endnum);
     // Member-Function
     //// setReactantName:
     //////// Set the name of reactant in certain reactions.
     void setReactantName(const std::vector<std::string> &namelist);
-    //// outputList:
-    //////// Output result to file.
-    void outputList(std::ofstream & outfile);
     //// outputStable:
     /////// Output the stable situation to file.
-    void outputFinal(std::ofstream & outfile);
+    void outputFinal(std::ofstream& outfile);
     //// getFinalOutput:
     //////// Return the output reactant concentration values at stable stage.
     double getFinalOutput();
@@ -171,9 +242,15 @@ public:
     //////// Using gsl to solve ode.
     void odeRun(double     start_t,
                 double     end_t,
-                Parameter *params,
+                Parameter* params,
                 double     reactant[],
                 double     pacelen);
+    //// reachStable:
+    //////// Check whether reach stable.
+    bool reachStable();
+    //// resultMonotone:
+    //////// Check whether result monotone.
+    bool resultMonotone();
 private:
     // Member-Function
     //// reactantName:
@@ -183,15 +260,16 @@ private:
     //////// Set the number of chemical reaction according to reaction type.
     void funcNumber();
     //// finalOrder:
-    //////// Set the number of final output order according to reaction type.
+    //////// Set the number of final output order according to reaction type.p
     void finalOrder();
     //// judgeStable:
     //////// Whether the ordinary differential equations reach stable.
     bool isStable();
     //// isMonotone:
     //////// Whether the values are monotonous.
-    bool isMonotone(int order);
+    //bool isMonotone(int order);
 
+    bool isMonotone(std::vector<double>& x, std::vector<double>& y);
     //// odeFunction1s1p:
     //////// Needed by <gsl/gsl_odeiv2.h>, 1 stage, 1 phosphorylation.
     static int odeFunction1s1p(double t, const double y[],
@@ -199,82 +277,88 @@ private:
     //// odeJacobian1s1p:
     //////// Needed by <gsl/gsl_odeiv2.h>, 1 stage, 1 phosphorylation.
     static int odeJacobian1s1p(double t, const double y[],
-                               double *dfdy, double dydt[], void *para);
+                               double dfdy[], double dydt[],
+                               void* para);
     //// odeFunction1s2p:
     //////// Needed by <gsl/gsl_odeiv2.h>, 1 stage, 2 phosphorylations.
     static int odeFunction1s2p(double t, const double y[],
-                               double f[], void *para);
+                               double f[], void* para);
     //// odeJacobian1s2p:
     //////// Needed by <gsl/gsl_odeiv2.h>, 1 stage, 2 phosphorylations.
     static int odeJacobian1s2p(double t, const double y[],
-                               double *dfdy, double dydt[], void *para);
+                               double dfdy[], double dydt[],
+                               void* para);
     //// odeFunction2s1p:
     //////// Needed by <gsl/gsl_odeiv2.h>, 2 stages, 1 phosphorylation.
     static int odeFunction2s1p(double t, const double y[],
-                               double f[], void *para);
+                               double f[], void* para);
     //// odeJacobian2s1p:
     //////// Needed by <gsl/gsl_odeiv2.h>, 2 stages, 1 phosphorylation.
     static int odeJacobian2s1p(double t, const double y[],
-                               double *dfdy, double dydt[], void *para);
+                               double dfdy[], double dydt[],
+                               void* para);
     //// odeFunction2s2p:
     //////// Needed by <gsl/gsl_odeiv2.h>, 2 stages, 2 phosphorylations.
     static int odeFunction2s2p(double t, const double y[],
-                               double f[], void *para);
+                               double f[], void* para);
     //// odeJacobian2s1p:
     //////// Needed by <gsl/gsl_odeiv2.h>, 2 stages, 2 phosphorylations.
     static int odeJacobian2s2p(double t, const double y[],
-                               double *dfdy, double dydt[], void *para);
+                               double dfdy[], double dydt[],
+                               void* para);
     //// odeFunction3s1p:
     //////// Needed by <gsl/gsl_odeiv2.h>, 3 stages, 1 phosphorylation.
     static int odeFunction3s1p(double t, const double y[],
-                               double f[], void *para);
+                               double f[], void* para);
     //// odeJacobian3s1p:
     //////// Needed by <gsl/gsl_odeiv2.h>, 3 stages, 1 phosphorylation.
     static int odeJacobian3s1p(double t, const double y[],
-                               double *dfdy, double dydt[], void *para);
+                               double dfdy[], double dydt[],
+                               void *para);
     //// odeFunction3s2p:
     //////// Needed by <gsl/gsl_odeiv2.h>, 3 stages, 2 phosphorylations.
     static int odeFunction3s2p(double t, const double y[],
-                               double f[], void *para);
+                               double f[], void* para);
     //// odeJacobian3s2p:
     //////// Needed by <gsl/gsl_odeiv2.h>, 3 stages, 2 phosphorylations.
     static int odeJacobian3s2p(double t, const double y[],
-                               double *dfdy, double dydt[], void *para);
+                               double dfdy[], double dydt[],
+                               void* para);
 
     //// calculateDissipation:
     //////// Energy dissipation of each time.
-    double calculateDissipation(const double yarray[],
-                                void * param);
+    double calculateDissipation(double yarray[],
+                                void*  param);
     //// propensity1s1p:
     //////// Needed by calculateDissipation, 1 stage, 1 phosphorylation.
     static void propensityFunction1s1p(const double y[],
-                                       double prob[],
-                                       void *para);
+                                       double       prob[],
+                                       void*        para);
     //// propensity1s2p:
     //////// Needed by calculateDissipation, 1 stage, 2 phosphorylations.
     static void propensityFunction1s2p(const double y[],
-                                       double prob[],
-                                       void *para);
+                                       double       prob[],
+                                       void*        para);
     //// propensity2s1p:
     //////// Needed by calculateDissipation, 2 stages, 1 phosphorylation.
     static void propensityFunction2s1p(const double y[],
-                                       double prob[],
-                                       void *para);
+                                       double       prob[],
+                                       void*        para);
     //// propensity2s2p:
     //////// Needed by calculateDissipation, 2 stages, 2 phosphorylations.
     static void propensityFunction2s2p(const double y[],
-                                       double prob[],
-                                       void *para);
+                                       double       prob[],
+                                       void*        para);
     //// propensity3s1p:
     //////// Needed by calculateDissipation, 3 stages, 1 phosphorylation.
     static void propensityFunction3s1p(const double y[],
-                                       double prob[],
-                                       void *para);
+                                       double       prob[],
+                                       void*        para);
     //// propensity3s2p:
     //////// Needed by calculateDissipation, 3 stages, 2 phosphorylations.
     static void propensityFunction3s2p(const double y[],
-                                       double prob[],
-                                       void *para);
+                                       double       prob[],
+                                       void*        para);
 };
 
 
@@ -295,24 +379,51 @@ public:
         output(0.0),
         time(0.0),
         dissipation(0.0) {}
-    Stable(double i, double o, double t, double d);
+    Stable(const double& i,
+           const double& o,
+           const double& t,
+           const double& d):
+        input(i),
+        output(o),
+        time(t),
+        dissipation(d) {}
+    Stable(const Stable& stb):
+        input(stb.input),
+        output(stb.output),
+        time(stb.time),
+        dissipation(stb.dissipation) {}
+    
+    // Destructor
+    virtual ~Stable() {}
 
+    // Friend
+    friend std::ostream& operator<<(std::ostream& out,
+                                    Stable&       stb);
     // Member-Function
     //// setValue
     //////// Set the value of instant.
-    void setValue(double i, double o, double t, double d);
+    void setValue(const double& i,
+                  const double& o,
+                  const double& t,
+                  const double& d);
     //// getValue
     //////// Return value of according.
-    double getValue(int according);
+    double getValue(const int& according);
     //// lt
     //////// lt is less than <.
-    static bool lt(Stable& a, Stable& b, int according);
+    static bool lt(const Stable& a,
+                   const Stable& b,
+                   const int&    according);
     //// gt
     //////// gt is greater than >.
-    static bool gt(Stable& a, Stable& b, int according);
+    static bool gt(const Stable& a,
+                   const Stable& b,
+                   const int&    according);
     //// eq
     //////// eq is equal =.
-    static bool eq(Stable& a, Stable& b, int according);
+    static bool eq(const Stable& a,
+                   const Stable& b,
+                   const int&    according);
 };
 
     
@@ -323,10 +434,10 @@ class StableList
     int               reaction_type;
     int               function_num;
     size_t            reactant_num;
-    static bool compa(Stable& a, Stable& b);
-    static bool compb(Stable& a, Stable& b);
-    static bool compc(Stable& a, Stable& b);
-    static bool compd(Stable& a, Stable& b);
+    static bool ltcompa(Stable& a, Stable& b);
+    static bool ltcompb(Stable& a, Stable& b);
+    static bool ltcompc(Stable& a, Stable& b);
+    static bool ltcompd(Stable& a, Stable& b);
 public:
     std::vector<Stable> situation;
 
@@ -336,56 +447,81 @@ public:
         reaction_type(0),
         function_num(0),
         reactant_num(0) {}
-    StableList(int type);
-    StableList(int         type,
-               int         functionnum,
-               int         reactantnum);
+    StableList(const int& type);
+    StableList(const int& type,
+               const int& functionnum,
+               const int& reactantnum):
+        reaction_type(type),
+        function_num(functionnum),
+        reactant_num(reactantnum) {}
+    // Destructor
+    virtual ~StableList() {}
 
+    // Friend
+    friend std::ostream& operator<<(std::ostream& out,
+                                    StableList&   sl);
+    friend bool isStableUseEndSome(std::unique_ptr<double[]>&  thevector,
+                                   size_t size,
+                                   double threshold,
+                                   int    endnum);
+    // Type Define
     typedef std::vector<Stable>::iterator iterator;
+    typedef Stable value_type;
+    // Operator
+    //// operator[]
+    Stable& operator[](const size_t index);
+    
     // Member-Function
     //// addBack:
     //////// Add values to the end.
-    void addBack(double iput,
-                 double oput,
-                 double t,
-                 double e);
+    void addBack(const double& iput,
+                 const double& oput,
+                 const double& t,
+                 const double& e);
     //// addInter:
     //////// Insert values according to iterator.
-    void addInter(iterator it,
-                  double                      iput,
-                  double                      oput,
-                  double                      t,
-                  double                      e);
+    void addInter(iterator      it,
+                  const double& iput,
+                  const double& oput,
+                  const double& t,
+                  const double& e);
     void addInter(iterator   it,
                   std::vector<Stable>::value_type value);
-    //// notSufficient:
+    //// unSufficient:
     //////// Return the first pointer if the gap between output is too large.
     std::vector<Stable>::iterator unSufficient();
-    //// maxOutput:
-    //////// Return the max output value.
+    //// isMonotone
+    //////// Return true if exists monotone.
+    bool isMonotone();
+    //// max:
+    //////// Return the max value.
     std::vector<Stable>::iterator max(int according = 2);
+    //// min:
+    //////// Return the min value.
+    std::vector<Stable>::iterator min(int according = 2);
+    //// isStable:
+    //////// Judge whether reach stable.
+    bool isStable(int xaccording = 1, int yaccording = 2);
     //// sortList:
     //////// Sort situation.
     void sortList(int according = 1);
 
-    //// outputList:
-    //////// Output result to file.
-    void outputList(std::ofstream & outfile);
     //// getPercent
     //////// Return the iterator pointed to situation with value near specific percentage.
-    std::vector<Stable>::iterator getPercent(double percent, int according = 2);
+    std::vector<Stable>::iterator getPercent(const double& percent,
+                                             int according = 2);
     //// getArray
     //////// Return double[] of values using according to specific.
-    double* getArray(int according);
+    std::unique_ptr<double[]> getArray(const int& according);
     //// begin:
     //////// Return the begin of situation.
-    inline std::vector<Stable>::iterator begin() {return situation.begin();}
+    std::vector<Stable>::iterator begin() {return situation.begin();}
     //// end:
     //////// Return the end of situation.
-    inline std::vector<Stable>::iterator end() {return situation.end();}
+    std::vector<Stable>::iterator end() {return situation.end();}
     //// size:
     //////// Return the size of situation.
-    inline size_t size();
+    size_t size();
 };
 
 
@@ -397,16 +533,33 @@ public:
     std::vector<double> x;
     std::vector<double> y;
 
+    // Destructor
+    virtual ~DataInterpolation() {}
+    // Friend
+    friend std::ostream& operator<<(std::ostream&    out,
+                                    DataInterpolation& di);
     // Member-Function
     //// interpolate:
     //////// Interpolate data.
-    void interpolate(const double* xarray,
-                     const double* yarray,
-                     long          length,
-                     long          number);
+    void interpolate(std::unique_ptr<double[]> xarray,
+                     std::unique_ptr<double[]> yarray,
+                     long                      length,
+                     long                      number);
+    void interpolateL(std::unique_ptr<double[]> xarray,
+                      std::unique_ptr<double[]> yarray,
+                      long                      length,
+                      long                      number);
     //// size:
     //////// Return the size of data.
-    inline size_t size();
+    size_t size();
+    //// nearPercentNum
+    //////// Return the order of value near specific percentage.
+    int nearPercentNum(const double& percent,
+                       const int     according = 2);
+    //// nearValueNum
+    //////// Return the order of value near specific percentage.
+    int nearValueNum(const double& value,
+                     const int     according = 1);    
 };
 
 
@@ -415,39 +568,8 @@ public:
 ////////////////////
 
 
-size_t Concentration::size()
-//// Member-Function: Concentration::size
-//// Return the size of reactant.
-{
-    return reactant_num;
-}
-
-
-double& Concentration::operator[](int i)
-//// Member-Function: Concentration::operator[]
-//// Used for subscript operator overloading.
-{
-    if (i >= reactant_num) {
-        std::cout << "Concentration: subscript operator out of bounds."
-                  << "\n";
-        exit(1);
-    }
-    return reactant[i];
-}
 
 
 
-size_t StableList::size()
-//// Member-Function: StableList::size
-//// Return the size of situation.
-{
-    return situation.size();
-}
 
 
-size_t DataInterpolation::size()
-//// Member-Function: DataInterpolation::size
-//// Return the size of DataInterpolation.
-{
-    return x.size();
-}

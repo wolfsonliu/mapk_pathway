@@ -33,19 +33,25 @@ class LatinVector
     void generateRandomList();
 
 public:
+    // Constructor
     LatinVector():
         lower_limit(0.0),
         upper_limit(0.0),
         sample_num(0.0) {}//
-    LatinVector(double lower,
-                double upper,
-                long sample);
+    LatinVector(const double& lower,
+                const double& upper,
+                const long&   sample);
+    // Destructor
+    virtual ~LatinVector() {}
+    
     //// operator[]:
     //// Used for subscript operator overloading.
-    double& operator[](int i);
+    double& operator[](const int i);
     //// setLatin:
     //// Set and generate random values.
-    void setLatin(double lower, double upper, long sample);
+    void setLatin(const double& lower,
+                  const double& upper,
+                  const long&   sample);
     //// getLatin:
     //// Return vector of values.
     std::vector<double> getLatin();
@@ -57,5 +63,5 @@ public:
     void printLatin();
     //// outputLatin:
     //// Output latin vector to file.
-    void outputLatin(std::ofstream & outfile);
+    void outputLatin(std::ofstream& outfile);
 };
