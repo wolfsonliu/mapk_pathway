@@ -15,6 +15,13 @@
 #include <vector>
 
 
+class LatinVector;
+
+////////////////////
+// Functions
+////////////////////
+std::ostream& operator<<(std::ostream& out, LatinVector& latin);
+
 ////////////////////
 // Classes
 ////////////////////
@@ -43,10 +50,15 @@ public:
                 const long&   sample);
     // Destructor
     virtual ~LatinVector() {}
-    
+    // Friend
+    friend std::ostream& operator<<(std::ostream& out,
+                                    LatinVector& latin);
+    // Operator
     //// operator[]:
     //// Used for subscript operator overloading.
     double& operator[](const int i);
+    
+    // Member-Function
     //// setLatin:
     //// Set and generate random values.
     void setLatin(const double& lower,
@@ -58,10 +70,13 @@ public:
     //// shuffleLatin:
     //// Shuffle again.
     void shuffleLatin();
+    //// size:
+    //// Return the size of vector.
+    size_t size();
     //// printLatin:
     //// Print vector values to screen.
-    void printLatin();
+    //void printLatin();
     //// outputLatin:
     //// Output latin vector to file.
-    void outputLatin(std::ofstream& outfile);
+    //void outputLatin(std::ofstream& outfile);
 };

@@ -4,7 +4,7 @@
 // Algorithm: using GNU Scientific Library.
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "mapk_ode.hpp"
+#include "mapk_ode2.hpp"
 
 
 
@@ -46,12 +46,6 @@ std::ostream& operator<<(std::ostream& out, ReactantConcentration& rc)
 //// operator<<
 //// Output result to stream.
 {
-    out << "Time";
-    for (size_t i = 0; i != rc.reactant_num; ++i) {
-        out << "," << rc.name[i];
-    }//for
-    out << ",Dissipation";
-    out << "\n";
     for (std::vector<Concentration>::size_type vi = 0;
          vi != rc.list.size();
          ++vi) {
@@ -145,6 +139,181 @@ bool isStableUseEndSome(std::unique_ptr<double[]>& x,
     } // for.
     return judge;
 
+}
+
+bool isMonotoneUseTwoVct(std::vector<double>& x,
+                         std::vector<double>& y)
+//// Function: isMonotoneWithTwoVct
+//// Whether monotonous.
+{
+    double dx        = 0.0;
+    double dy        = 0.0;
+    double kvalue    = 0.0;
+    //std::vector<double> k;
+    long   increase  = 0;
+    long   decrease  = 0;
+    long   totalsize = x.size() - 1;
+    int    sign      = 0;
+    
+    for (int i = 0; i != x.size() - 2; ++i) {
+        // calculate the k.
+        dx = x[i + 2] - x[i];
+        dy = y[i + 2] - y[i];
+        //k.push_back(dy / dx);
+        if ((dy / dx) >= 0) {
+            ++increase;
+        } else if ((dy / dx) < 0) {
+            ++decrease;
+        }
+    }
+
+    if (//increase > static_cast<int>(totalsize * 0.6) &&
+        decrease < static_cast<int>(totalsize * 0.01)) {
+        return true;
+    } else if (//decrease > static_cast<int>(totalsize * 0.6) &&
+               increase < static_cast<int>(totalsize * 0.01)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+
+bool isOscillationUseOneVct(//std::vector<double>& x,
+                            std::vector<double>& y)
+//// Function: isOscillation
+//// Return true if exists Oscillation.
+{
+    bool hasvalley = false;
+    bool haspeak   = false;
+    bool isoscillation = false;
+    std::vector<double>::iterator firstmax_i =
+        std::max_element(y.begin(), y.end());
+    double first_max = *firstmax_i;
+    
+    std::vector<double>::iterator firstminafter_fm_i =
+        std::min_element(firstmax_i + 1, y.end()); 
+    double first_min_after_fm = *firstminafter_fm_i;
+    
+    std::vector<double>::iterator secondmax_i =
+        std::max_element(firstminafter_fm_i, y.end());
+    double second_max = *secondmax_i;
+    
+    
+    if (first_max > 1.05 * y.back()) {
+        isoscillation = true;
+    }
+                                            
+    //for (std::vector<double>::iterator vi = firstmax_i;
+    //     vi != y.end() - 1;
+    //     ++vi) {
+    //    if (*vi < *(vi - 1) && *vi < *(vi + 1)) {
+    //        hasvalley = true;
+    //    }
+    //} // for.
+    if (isoscillation) {
+        return true;
+    }
+    
+    return false;
+}
+
+
+void reactantName(std::vector<std::string>& name, int& reaction_type)
+//// Function: reactantName
+//// Return the vector of strings in a kind of reaction.
+{
+    if (reaction_type == 1) {
+    // 1s1p
+        name.push_back("map3k");
+        name.push_back("map3kp");
+        name.push_back("map3k_ras");
+        name.push_back("map3kp_m3kp");
+        name.push_back("ras");
+        name.push_back("m3kp");
+
+    } else if (reaction_type == 2) {
+    // 1s2p
+        name.push_back("map3k");
+        name.push_back("map3kp");
+        name.push_back("map3k2p");
+        name.push_back("map3k_ras");
+        name.push_back("map3kp_m3kp");
+        name.push_back("map3kp_ras");
+        name.push_back("map3k2p_m3kp");
+        name.push_back("ras");
+        name.push_back("m3kp");       
+    } else if (reaction_type == 3) {
+    // 2s1p
+        name.push_back("map3k");
+        name.push_back("map3kp");
+        name.push_back("map2k");
+        name.push_back("map2kp");
+        name.push_back("map3k_ras");
+        name.push_back("map3kp_m3kp");
+        name.push_back("map2k_map3kp");
+        name.push_back("map2kp_m2kp");
+        name.push_back("ras");
+        name.push_back("m3kp");
+        name.push_back("m2kp");
+    } else if (reaction_type == 4) {
+    // 2s2p
+        name.push_back("map3k");
+        name.push_back("map3kp");
+        name.push_back("map2k");
+        name.push_back("map2kp");
+        name.push_back("map2k2p");
+        name.push_back("map3k_ras");
+        name.push_back("map3kp_m3kp");
+        name.push_back("map2k_map3kp");
+        name.push_back("map2kp_m2kp");
+        name.push_back("map2kp_map3kp");
+        name.push_back("map2k2p_m2kp");
+        name.push_back("ras");
+        name.push_back("m3kp");
+        name.push_back("m2kp");
+    } else if (reaction_type == 5) {
+    // 3s1p
+        name.push_back("map3k");
+        name.push_back("map3kp");
+        name.push_back("map2k");
+        name.push_back("map2kp");
+        name.push_back("mapk");
+        name.push_back("mapkp");
+        name.push_back("map3k_ras");
+        name.push_back("map3kp_m3kp");
+        name.push_back("map2k_map3kp");
+        name.push_back("map2kp_m2kp");
+        name.push_back("mapk_map2kp");
+        name.push_back("mapkp_mkp");
+        name.push_back("ras");
+        name.push_back("m3kp");
+        name.push_back("m2kp");
+        name.push_back("mkp");
+    } else if (reaction_type == 6) {
+        name.push_back("map3k");
+        name.push_back("map3kp");
+        name.push_back("map2k");
+        name.push_back("map2kp");
+        name.push_back("map2k2p");
+        name.push_back("mapk");
+        name.push_back("mapkp");
+        name.push_back("mapk2p");
+        name.push_back("map3k_ras");
+        name.push_back("map3kp_m3kp");
+        name.push_back("map2k_map3kp");
+        name.push_back("map2kp_m2kp");
+        name.push_back("map2kp_map3kp");
+        name.push_back("map2k2p_m2kp");
+        name.push_back("mapk_map2k2p");
+        name.push_back("mapkp_mkp");
+        name.push_back("mapkp_map2k2p");
+        name.push_back("mapk2p_mkp");
+        name.push_back("ras");
+        name.push_back("m3kp");
+        name.push_back("m2kp");
+        name.push_back("mkp");
+    }
 }
 ////////////////////
 
@@ -248,7 +417,7 @@ Parameter& Parameter::operator=(const Parameter& para)
     }
     atp = para.atp;
     return *shared_from_this();
-}    
+}   
 
 
 void Parameter::initParameter(const int& dimension)
@@ -583,20 +752,20 @@ ReactantConcentration::ReactantConcentration(const int& type)
 {
     reaction_type = type;
     reach_stable = true;
-    reactantName();
-    reactant_num = name.size();
+    //reactantName();
+    
     funcNumber();
     finalOrder();
 }
 
 
-void ReactantConcentration::setReactantName(const std::vector<std::string>& namelist)
+//void ReactantConcentration::setReactantName(const std::vector<std::string>& namelist)
 //// Member-Function: etReactantName
 //// Store the names of reactants in the list.
-{
-    name = namelist;
-    reactant_num = name.size();
-}
+//{
+    //name = namelist;
+    //reactant_num = name.size();
+//}
 
 
 bool ReactantConcentration::isStable()
@@ -611,90 +780,33 @@ bool ReactantConcentration::isStable()
         x_array[si] = time[si];
         y_array[si] = list[si].get(final_out);
     } // for.
-    return isStableUseEndSome(x_array, y_array, vct_len, 0.001, 5);
+    return isStableUseEndSome(x_array, y_array, vct_len, 0.01, 5);
 }
 
 
-bool ReactantConcentration::isMonotone(std::vector<double>& x,
-                                       std::vector<double>& y)
+bool ReactantConcentration::isMonotone()
 //// Member-Function: isMonotone
-//// Wheter monotous.
-{
-    double dx        = 0.0;
-    double dy        = 0.0;
-    double kvalue    = 0.0;
-    //std::vector<double> k;
-    long   increase  = 0;
-    long   decrease  = 0;
-    long   totalsize = x.size() - 1;
-    int    sign      = 0;
-    
-    for (int i = 0; i != x.size() - 2; ++i) {
-        // calculate the k.
-        dx = x[i + 2] - x[i];
-        dy = y[i + 2] - y[i];
-        //k.push_back(dy / dx);
-        if ((dy / dx) >= 0) {
-            ++increase;
-        } else if ((dy / dx) < 0) {
-            ++decrease;
-        }
-    }
-
-    if (//increase > static_cast<int>(totalsize * 0.6) &&
-        decrease < static_cast<int>(totalsize * 0.01)) {
-        return true;
-    } else if (//decrease > static_cast<int>(totalsize * 0.6) &&
-               increase < static_cast<int>(totalsize * 0.01)) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-
-bool ReactantConcentration::resultMonotone()
-//// resultMonotone:
 //// Check whether result monotone.
 {
     std::vector<double> output;
     for (size_t si = 0; si != list.size(); ++si) {
         output.push_back(list[si].get(final_out));
     }
-    return isMonotone(time, output);
+    return isMonotoneUseTwoVct(time, output);
 
 }
 
-//bool ReactantConcentration::isMonotone(int order)
-////// Member-Function: isMonotone
-////// Whether the values are monotonous,
-////// return 1 when monotonous, return 0 when not.
-//{
-//    bool judgement = true;
-//    int  sign = 0;
-//    if ((list.back().get(order) -
-//         list.front().get(order)) > 0) {
-//        sign = 1;
-//    } else if ((list.back().get(order) -
-//                list.front().get(order)) < 0) {
-//        sign = -1;
-//    }
-//        
-//    for (std::vector<Concentration>::iterator list_iter = list.begin();
-//         list_iter != list.end() - 1;
-//         ++list_iter) {
-//        if (sign > 0 && ((*(list_iter + 1)).get(order) -
-//                         (*list_iter).get(order)) < 0) {
-//            judgement = false;
-//            break;
-//        } else if (sign < 0 && ((*(list_iter + 1)).get(order) -
-//                                (*list_iter).get(order)) > 0) {
-//            judgement = false;
-//            break;
-//        }
-//    }
-//    return judgement;   
-//}
+
+bool ReactantConcentration::isOscillation()
+//// Member-Function: isOscillation
+//// Check whether exist oscillation.
+{
+    std::vector<double> output;
+    for (size_t si = 0; si != list.size(); ++si) {
+        output.push_back(list[si].get(final_out));
+    } // for.
+    return isOscillationUseOneVct(output);
+}
 
 
 bool ReactantConcentration::reachStable()
@@ -711,7 +823,7 @@ void ReactantConcentration::outputFinal(std::ofstream& outfile)
 //// Member-Function: outputStable
 //// Output the stable situation to file.
 {
-    if (reach_stable == true && resultMonotone()) {
+    if (reach_stable == true && isMonotone()) {
         for (std::vector<Concentration>::size_type vi = 0;
              vi != list.size();
              ++vi) {
@@ -900,103 +1012,6 @@ double ReactantConcentration::calculateDissipation(double yarray[],
 }  
 
 
-void ReactantConcentration::reactantName()
-//// Member-Function: reactantName
-//// Return the vector of strings in a kind of reaction.
-{
-    if (reaction_type == 1) {
-    // 1s1p
-        name.push_back("map3k");
-        name.push_back("map3kp");
-        name.push_back("map3k_ras");
-        name.push_back("map3kp_m3kp");
-        name.push_back("ras");
-        name.push_back("m3kp");
-
-    } else if (reaction_type == 2) {
-    // 1s2p
-        name.push_back("map3k");
-        name.push_back("map3kp");
-        name.push_back("map3k2p");
-        name.push_back("map3k_ras");
-        name.push_back("map3kp_m3kp");
-        name.push_back("map3kp_ras");
-        name.push_back("map3k2p_m3kp");
-        name.push_back("ras");
-        name.push_back("m3kp");       
-    } else if (reaction_type == 3) {
-    // 2s1p
-        name.push_back("map3k");
-        name.push_back("map3kp");
-        name.push_back("map2k");
-        name.push_back("map2kp");
-        name.push_back("map3k_ras");
-        name.push_back("map3kp_m3kp");
-        name.push_back("map2k_map3kp");
-        name.push_back("map2kp_m2kp");
-        name.push_back("ras");
-        name.push_back("m3kp");
-        name.push_back("m2kp");
-    } else if (reaction_type == 4) {
-    // 2s2p
-        name.push_back("map3k");
-        name.push_back("map3kp");
-        name.push_back("map2k");
-        name.push_back("map2kp");
-        name.push_back("map2k2p");
-        name.push_back("map3k_ras");
-        name.push_back("map3kp_m3kp");
-        name.push_back("map2k_map3kp");
-        name.push_back("map2kp_m2kp");
-        name.push_back("map2kp_map3kp");
-        name.push_back("map2k2p_m2kp");
-        name.push_back("ras");
-        name.push_back("m3kp");
-        name.push_back("m2kp");
-    } else if (reaction_type == 5) {
-    // 3s1p
-        name.push_back("map3k");
-        name.push_back("map3kp");
-        name.push_back("map2k");
-        name.push_back("map2kp");
-        name.push_back("mapk");
-        name.push_back("mapkp");
-        name.push_back("map3k_ras");
-        name.push_back("map3kp_m3kp");
-        name.push_back("map2k_map3kp");
-        name.push_back("map2kp_m2kp");
-        name.push_back("mapk_map2kp");
-        name.push_back("mapkp_mkp");
-        name.push_back("ras");
-        name.push_back("m3kp");
-        name.push_back("m2kp");
-        name.push_back("mkp");
-    } else if (reaction_type == 6) {
-        name.push_back("map3k");
-        name.push_back("map3kp");
-        name.push_back("map2k");
-        name.push_back("map2kp");
-        name.push_back("map2k2p");
-        name.push_back("mapk");
-        name.push_back("mapkp");
-        name.push_back("mapk2p");
-        name.push_back("map3k_ras");
-        name.push_back("map3kp_m3kp");
-        name.push_back("map2k_map3kp");
-        name.push_back("map2kp_m2kp");
-        name.push_back("map2kp_map3kp");
-        name.push_back("map2k2p_m2kp");
-        name.push_back("mapk_map2k2p");
-        name.push_back("mapkp_mkp");
-        name.push_back("mapkp_map2k2p");
-        name.push_back("mapk2p_mkp");
-        name.push_back("ras");
-        name.push_back("m3kp");
-        name.push_back("m2kp");
-        name.push_back("mkp");
-    }
-}
-
 
 void ReactantConcentration::finalOrder()
 //// Member-Function: finalOrder
@@ -1034,21 +1049,27 @@ void ReactantConcentration::funcNumber()
 {
     switch (reaction_type) {
     case 1:
+        reactant_num = 6;
         function_num = 2;
         break;
     case 2:
+        reactant_num = 9;
         function_num = 4;
         break;
     case 3:
+        reactant_num = 11;
         function_num = 4;
         break;
     case 4:
+        reactant_num = 14;
         function_num = 6;
         break;
     case 5:
+        reactant_num = 16;
         function_num = 6;
         break;
     case 6:
+        reactant_num = 22;
         function_num = 10;
         break;
     default:
@@ -3775,7 +3796,7 @@ std::vector<Stable>::iterator StableList::unSufficient()
     }
     
     //double xthreshold = 0.05 * (max(1)->input - min(1)->input);
-    double ythreshold = 0.05 * (max(2)->output - min(2)->output);
+    double ythreshold = 0.1 * (max(2)->output - min(2)->output);
 
     for (std::vector<Stable>::iterator ii = situation.begin() + 1;
          ii != situation.end();
@@ -3810,7 +3831,7 @@ bool StableList::isStable(int xaccording, int yaccording)
         x_array[si] = situation[si].getValue(xaccording);
         y_array[si] = situation[si].getValue(yaccording);
     } // for.
-    return isStableUseEndSome(x_array, y_array, vct_len, 0.001, 5);
+    return isStableUseEndSome(x_array, y_array, vct_len, 0.01, 5);
 }
 
 
@@ -3946,9 +3967,13 @@ int DataInterpolation::nearPercentNum(const double& percent,
 {
     double value = 0.0;
     if (according == 1) {
-        value = percent * (*max_element(x.begin(), x.end()));
+        value = percent * ((*max_element(x.begin(), x.end())) -
+                           (*min_element(x.begin(), x.end()))) +
+            (*min_element(x.begin(), x.end()));
     } else if (according == 2) {
-        value = percent * (*max_element(y.begin(), y.end()));
+        value = percent * ((*max_element(y.begin(), y.end())) -
+                           (*min_element(y.begin(), y.end()))) +
+            (*min_element(y.begin(), y.end()));
     }
     double smallest = 0.0;
     std::vector<double> p;

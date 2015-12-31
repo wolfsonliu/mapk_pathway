@@ -8,6 +8,23 @@
 #include "parameter.hpp"
 
 ////////////////////
+// Functions
+////////////////////
+
+std::ostream& operator<<(std::ostream& out, LatinVector& latin)
+//// operator<<
+//// Output LatinVector.
+{
+    for (long i = 0; i != latin.sample_num - 1; ++i) {
+        out << latin.latin_vector[i] << ",";
+    }
+    out << latin.latin_vector.back();
+    return out;
+}
+
+
+
+////////////////////
 // Class: LatinVector
 ////////////////////
 
@@ -112,28 +129,35 @@ void LatinVector::shuffleLatin()
 }
 
 
-void LatinVector::printLatin()
-//// Member-Function: printLatin
-//// print vector values to screen.
+size_t LatinVector::size()
+//// Member-Function: size
+//// Return the size of vector.
 {
-    std::cout << "The Latin Vector Values: "
-              << "roof( " << upper_limit
-              << " ) floor( " << lower_limit << " )\n";
-    std::cout << "Num\tValue\n";
-    for (long i = 0; i != sample_num; ++i) {
-        std::cout << i << "\t" << latin_vector[i] << "\n";
-    }
-    std::cout << std::endl;
+    return latin_vector.size();
 }
-
-
-void LatinVector::outputLatin(std::ofstream & outfile)
-//// Member-Function: outputLatin
-//// output latin vector to file.
-{
-    outfile << "Num,Value\n";
-    for (long i = 0; i != sample_num; ++i) {
-        outfile << i << "," << latin_vector[i] << "\n";
-    }
-}
+    
+//void LatinVector::printLatin()
+////// Member-Function: printLatin
+////// print vector values to screen.
+//{
+//    std::cout << "The Latin Vector Values: "
+//              << "roof( " << upper_limit
+//              << " ) floor( " << lower_limit << " )\n";
+//    std::cout << "Num\tValue\n";
+//    for (long i = 0; i != sample_num; ++i) {
+//        std::cout << i << "\t" << latin_vector[i] << "\n";
+//    }
+//    std::cout << std::endl;
+//}
+//
+//
+//void LatinVector::outputLatin(std::ofstream & outfile)
+////// Member-Function: outputLatin
+////// output latin vector to file.
+//{
+//    outfile << "Num,Value\n";
+//    for (long i = 0; i != sample_num; ++i) {
+//        outfile << i << "," << latin_vector[i] << "\n";
+//    }
+//}
 ////////////////////

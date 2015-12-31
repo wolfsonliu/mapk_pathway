@@ -49,6 +49,14 @@ bool isStableUseEndSome(std::unique_ptr<double[]>&  x,
                         size_t                      size,
                         double                      threshold = 0.0001,
                         int                         endnum    = 5);
+bool isMonotoneUseTwoVct(std::vector<double>& x,
+                         std::vector<double>& y);
+bool isOscillationUseOneVct(//std::vector<double>& x,
+                            std::vector<double>& y);
+void reactantName(std::vector<std::string>& name, int& reaction_type);
+//// isMonotoneUseTwoVct:
+//////// Whether the values are monotonous.
+
 //// Function: isStableUseEndSome
 //// Whether reach stable,
 //// return true when stable, return false when not stable.
@@ -201,7 +209,7 @@ public:
     std::vector<Concentration> list;
     std::vector<double>        dissipation;
     // energy dissipation.
-    std::vector<std::string>   name;
+    //std::vector<std::string>   name;
     int                        final_out;
     // the order of final output.
 
@@ -222,10 +230,14 @@ public:
                                    size_t size,
                                    double threshold,
                                    int    endnum);
+    friend bool isMonotoneUseTwoVct(std::vector<double>& x,
+                                    std::vector<double>& y);
+    friend bool isOscillationUseOneVct(//std::vector<double>& x,
+                                       std::vector<double>& y);
     // Member-Function
     //// setReactantName:
     //////// Set the name of reactant in certain reactions.
-    void setReactantName(const std::vector<std::string> &namelist);
+    //void setReactantName(const std::vector<std::string> &namelist);
     //// outputStable:
     /////// Output the stable situation to file.
     void outputFinal(std::ofstream& outfile);
@@ -248,14 +260,18 @@ public:
     //// reachStable:
     //////// Check whether reach stable.
     bool reachStable();
-    //// resultMonotone:
+    //// isMonotone:
     //////// Check whether result monotone.
-    bool resultMonotone();
+    bool isMonotone();
+    //// isOscillation:
+    //////// Check whether exist oscillaiton.
+    bool isOscillation();
+    
 private:
     // Member-Function
     //// reactantName:
     //////// Return the vector of strings in a kind of reaction.
-    void reactantName();
+    //void reactantName();
     //// funcNumber:
     //////// Set the number of chemical reaction according to reaction type.
     void funcNumber();
@@ -265,11 +281,6 @@ private:
     //// judgeStable:
     //////// Whether the ordinary differential equations reach stable.
     bool isStable();
-    //// isMonotone:
-    //////// Whether the values are monotonous.
-    //bool isMonotone(int order);
-
-    bool isMonotone(std::vector<double>& x, std::vector<double>& y);
     //// odeFunction1s1p:
     //////// Needed by <gsl/gsl_odeiv2.h>, 1 stage, 1 phosphorylation.
     static int odeFunction1s1p(double t, const double y[],
