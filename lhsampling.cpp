@@ -1,38 +1,41 @@
-////////////////////////////////////////////////////////////////////////////////
+//-*-coding:utf-8-*-
+////////////////////////////////////////
 // This file is the function file for Latin Hypercube Sampling.
 // Author: Wolfson
+// Date: Nov.29, 2015
+// Modified: Jan.5, 2016
 // Algorithm: shuffle the data for each dimension,
 //            and then choose the data from dimensions by their number.
-////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////
 
-#include "parameter.hpp"
+#include "lhsampling.hpp"
 
 ////////////////////
 // Functions
 ////////////////////
 
 std::ostream& operator<<(std::ostream& out, LatinVector& latin)
-//// operator<<
+// {{{ operator<<
 //// Output LatinVector.
 {
-    for (long i = 0; i != latin.sample_num - 1; ++i) {
+    for (size_t i = 0; i != latin.sample_num - 1; ++i) {
         out << latin.latin_vector[i] << ",";
     }
     out << latin.latin_vector.back();
     return out;
 }
-
+// }}}
 
 
 ////////////////////
 // Class: LatinVector
 ////////////////////
-
+// {{{ Class: LatinVector
 
 LatinVector::LatinVector(const double& lower,
                          const double& upper,
-                         const long&   sample)
-//// Constructor: LatinVector
+                         const size_t& sample)
+// {{{ Constructor: LatinVector
 {
     if (lower > upper) {
         lower_limit = upper;
@@ -45,20 +48,22 @@ LatinVector::LatinVector(const double& lower,
     sample_num = sample;
     generateRandomList();
 }
+// }}}
 
 
 void LatinVector::generateRandomList()
-//// Member-Function: generateRandomList
+// {{{ Member-Function: generateRandomList
 //// generate latin hypercube sampling random numbers.
 {
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();    // set the seed for random shuffle.
     std::mt19937 rd_engine(seed);
     double interval = (upper_limit - lower_limit) / sample_num;
 
+    double period_lowerlimit = 0;
 
-    for (int i = 0; i != sample_num; ++i) {
-        double period_lowerlimit = lower_limit + i * interval;
-        double period_upperlimit = period_lowerlimit + interval;
+    for (size_t i = 0; i != sample_num; ++i) {
+        period_lowerlimit = lower_limit +
+            static_cast<double>(i) * interval;
         latin_vector.push_back(period_lowerlimit +
                                interval *
                                (
@@ -74,10 +79,11 @@ void LatinVector::generateRandomList()
     // shuffle the list randomly to make the one dimensional latin hypercube sampling.
 
 }
+// }}}
 
 
-double& LatinVector::operator[](int i)
-//// Member-Function: operator[]
+double& LatinVector::operator[](const size_t& i)
+// {{{ Member-Function: operator[]
 //// Used for subscript operator overloading.
 {
     if (i >= sample_num) {
@@ -87,12 +93,13 @@ double& LatinVector::operator[](int i)
     }
     return latin_vector[i];
 }
+// }}}
 
 
 void LatinVector::setLatin(const double& lower,
                            const double& upper,
-                           const long&   sample)
-//// Member-Function: setLatin
+                           const size_t& sample)
+// {{{ Member-Function: setLatin
 //// Set and generate random values.
 {
        if (lower > upper) {
@@ -105,19 +112,21 @@ void LatinVector::setLatin(const double& lower,
     sample_num = sample;
     generateRandomList();
 }
+// }}}
 
 
 std::vector<double> LatinVector::getLatin()
-//// Member-Function: getLatin
+// {{{ Member-Function: getLatin
 //// Return vector of values.
 {
     std::vector<double> tmp = latin_vector;
     return tmp;
 }
+// }}}
 
 
 void LatinVector::shuffleLatin()
-//// Member-Function: shuffleLatin
+// {{{ Member-Function: shuffleLatin
 //// shuffle again.
 {
     unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();    // set the seed for random shuffle.
@@ -127,37 +136,19 @@ void LatinVector::shuffleLatin()
                  latin_vector.end(),
                  rd_engine);
 }
+// }}}
 
 
 size_t LatinVector::size()
-//// Member-Function: size
+// {{{ Member-Function: size
 //// Return the size of vector.
 {
     return latin_vector.size();
 }
-    
-//void LatinVector::printLatin()
-////// Member-Function: printLatin
-////// print vector values to screen.
-//{
-//    std::cout << "The Latin Vector Values: "
-//              << "roof( " << upper_limit
-//              << " ) floor( " << lower_limit << " )\n";
-//    std::cout << "Num\tValue\n";
-//    for (long i = 0; i != sample_num; ++i) {
-//        std::cout << i << "\t" << latin_vector[i] << "\n";
-//    }
-//    std::cout << std::endl;
-//}
-//
-//
-//void LatinVector::outputLatin(std::ofstream & outfile)
-////// Member-Function: outputLatin
-////// output latin vector to file.
-//{
-//    outfile << "Num,Value\n";
-//    for (long i = 0; i != sample_num; ++i) {
-//        outfile << i << "," << latin_vector[i] << "\n";
-//    }
-//}
+// }}}
 ////////////////////
+// }}}
+
+/////////
+// EOF //
+/////////

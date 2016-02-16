@@ -1,8 +1,13 @@
-////////////////////////////////////////////////////////////////////////////////
+//-*-coding:utf-8-*-
+////////////////////////////////////////
 // This file is the head file for MAPK pathway ordinary differential equation.
 // Author: Wolfson
+// Date: Nov.29, 2015
+// Modified: Jan.5, 2016
 // Algorithm: using GNU Scientific Library.
-////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////
+#ifndef MAPK_ODE_H
+#define MAPK_ODE_H
 
 #include <iostream>
 #include <fstream>
@@ -48,18 +53,20 @@ bool isStableUseEndSome(std::unique_ptr<double[]>&  x,
                         std::unique_ptr<double[]>&  y,
                         size_t                      size,
                         double                      threshold = 0.0001,
-                        int                         endnum    = 5);
+                        size_t                      endnum    = 5);
+//// isStableUseEndSome:
+//// Whether reach stable,
+//// return true when stable, return false when not stable.
+
 bool isMonotoneUseTwoVct(std::vector<double>& x,
                          std::vector<double>& y);
-bool isOscillationUseOneVct(//std::vector<double>& x,
-                            std::vector<double>& y);
-void reactantName(std::vector<std::string>& name, int& reaction_type);
 //// isMonotoneUseTwoVct:
 //////// Whether the values are monotonous.
 
-//// Function: isStableUseEndSome
-//// Whether reach stable,
-//// return true when stable, return false when not stable.
+bool isOscillationUseOneVct(//std::vector<double>& x,
+                            std::vector<double>& y);
+void reactantName(std::vector<std::string>& name, int& reaction_type);
+
 ////////////////////
 
 
@@ -69,7 +76,7 @@ void reactantName(std::vector<std::string>& name, int& reaction_type);
 
 
 class Parameter: public std::enable_shared_from_this<Parameter>
-//// Class: Parameter
+// {{{ Class: Parameter
 //// Store parameters in chemical equations.
 {
     // shared_from_this();
@@ -146,9 +153,11 @@ public:
     
 };    // remember the ;
 
+// }}}
+
 
 class Concentration: public std::enable_shared_from_this<Concentration>
-//// Class: Concentration
+// {{{ Class: Concentration
 //// store Concentration values with time.
 {
     bool is_new;
@@ -159,7 +168,7 @@ public:
     // Constructor
     Concentration():
         is_new(true),
-        reactant_num(0) {}//
+        reactant_num(0) {}
     Concentration(const size_t& dimension);
     Concentration(const size_t& dimension,
                   const std::unique_ptr<double[]>& y);
@@ -192,12 +201,13 @@ public:
     size_t size();
     //// get():
     //////// Used for subscript operator overloading.
-    double get(const int ord);
+    double get(const size_t& ord);
 };
+// }}}
 
 
 class ReactantConcentration
-//// Class: ReactantConcentration
+// {{{ Class: ReactantConcentration
 //// Store the list of reactant concentration changes with time.
 {
     bool                       reach_stable;
@@ -212,7 +222,7 @@ public:
     //std::vector<std::string>   name;
     int                        final_out;
     // the order of final output.
-
+    
     // Constructor
     ReactantConcentration():
         reach_stable(true),
@@ -269,6 +279,7 @@ public:
     
 private:
     // Member-Function
+    // {{{
     //// reactantName:
     //////// Return the vector of strings in a kind of reaction.
     //void reactantName();
@@ -370,11 +381,13 @@ private:
     static void propensityFunction3s2p(const double y[],
                                        double       prob[],
                                        void*        para);
+    // }}}
 };
+// }}}
 
 
 class Stable
-//// Class: Stable
+// {{{ Class: Stable
 //// Use in StableVector.
 {
 
@@ -436,10 +449,11 @@ public:
                    const Stable& b,
                    const int&    according);
 };
+// }}}
 
     
 class StableList
-//// Class: StableList
+// {{{ Class: StableList
 //// Store stable situation of different input.
 {
     int               reaction_type;
@@ -534,10 +548,11 @@ public:
     //////// Return the size of situation.
     size_t size();
 };
+// }}}
 
 
 class DataInterpolation
-//// Class: StableList
+// {{{ Class: StableList
 //// Store stable situation of different input.
 {
 public:
@@ -572,6 +587,10 @@ public:
     int nearValueNum(const double& value,
                      const int     according = 1);    
 };
+// }}}
+
+
+
 
 
 ////////////////////
@@ -580,7 +599,8 @@ public:
 
 
 
+#endif // MAPK_ODE_H
 
-
-
-
+/////////
+// EOF //
+/////////

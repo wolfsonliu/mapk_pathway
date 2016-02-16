@@ -1,6 +1,10 @@
 //-*-coding:utf-8-*-
-//Author: Wolfson
-//Date: Nov. 29, 2015
+////////////////////////////////////////
+// Calculate MAPK pathway
+// Author: Wolfson
+// Date: Nov. 29, 2015
+// Modified: Jan.5, 2015
+////////////////////////////////////////
 #include <boost/program_options.hpp>
 #include <boost/program_options/cmdline.hpp>
 #include <boost/program_options/config.hpp>
@@ -17,11 +21,12 @@
 #include <sstream>
 #include <memory>
 #include "mapk_ode2.hpp"
-#include "parameter.hpp"
+#include "lhsampling.hpp"
 
 using std::cout;
 using std::cin;
 using std::endl;
+using std::ostream;
 using std::ifstream;
 using std::ofstream;
 using std::ostringstream;
@@ -41,7 +46,9 @@ struct DeleteDoubleArray {
 //// Function: isFileExist
 //////// Check file exist.
 bool isFileExist(const char* file_name);
-
+ostream& chooseOstream(const int& choice,
+                       ostream&   ostypeone,
+                       ostream&   ostypetwo);
 
 
 
@@ -50,17 +57,18 @@ int main(int argc, char* argv[])
     ////////////////////
     // define and declaration
     ////////////////////
+    // {{{ Define Variables
 
     int      reaction_type;
     double   start_time;
     // start of time.
     double   end_time;
     // end of time.
-    int      num_chem;
+    size_t      num_chem;
     // number of chemical equation, dimension of f,b,kf,kb.
     size_t   num_reactant;
     // number of reactions, dimension of Jacobian.
-    long     num_sample;
+    size_t     num_sample;
     // number of latin hypercube sampling.
     unique_ptr<double[]>  reactant;
     vector<string> reactant_names;
@@ -92,12 +100,14 @@ int main(int argc, char* argv[])
     // the input reactant (ras) number in reactant, start from 0.
     int      output_ord;
     // the output reactant (mapk2p) number in reactant, start from 0.
+
+    //// output file
     string   infile_name;
     ifstream infile("mapk.cfg");
     string   outfile_tag;    // used before outfile name.
-    string   outfile_name;    // output file name.
-    ofstream outfile;
-    ostringstream outstr;    
+    string   main_outfile_name;    // output file name.
+    ofstream main_outfile;
+    ostringstream main_outstr;    
     string   detail_outfile_name;
     ofstream detail_outfile;
     ostringstream detail_outstr;
@@ -107,44 +117,64 @@ int main(int argc, char* argv[])
     string   interpolation_outfile_name;
     ofstream interpolation_outfile;
     ostringstream interpolation_outstr;
-    string   calculate_outfile_name;
-    ofstream calculate_outfile;
-    ostringstream calculate_outstr;
+    string   calculation_outfile_name;
+    ofstream calculation_outfile;
+    ostringstream calculation_outstr;
     string   infofile_name;
     ofstream infofile;
     ostringstream infostr;
-    int      detail;
-    bool     nosample = false;
+
+    //// program options.
+    bool     detail      = false;
+    bool     nosample    = false;    // whether has sampling.
+    bool     output_last = false;        // whether output at last.
     ////////////////////
+
+    // }}}
+
     
     ////////////////////
     // boost::program_options
     ////////////////////
+    // {{{ Boost: program_options
 
     //// used to parse arguments inputed by command line or config file.
     namespace po = boost::program_options;
 
     po::options_description desc("Allowed options");    // set option description.
+    // {{{ Add options
+
     desc.add_options()
         ("help,h", "Produce help message.")
+        ("output-at-last,l",
+         "Output result to file at the end of program")
+        ("detail,d",
+         "Output details of ordinary differential equations.")
+        ("outfile-tag",
+         po::value<string>(&outfile_tag),
+         "The tag added before output file name.")
         ("reaction-type,r",
          po::value<int>(&reaction_type),
          "Choose reaction type:\n"
          "\t1: one step reaction with one phosphorylation;\n"
-         "\t2: one step reaction with two phosphorylation.")
+         "\t2: one step reaction with two phosphorylations;\n"
+         "\t3: two steps reaction with one phosphorylation;\n"
+         "\t4: two steps reaction with two phosphorylations;\n"
+         "\t5: three steps reaction with one phosphorylation;\n"
+         "\t6: three steps reaction with two phosphorylations.\n")
         ("function-number",
-         po::value<int>(&num_chem),
+         po::value<size_t>(&num_chem),
          "Number of chemical functions.\n")
-        ("time,t",
+        ("time",
          po::value< vector<double> >()->multitoken(),
          "Input start time and end time with space as seperator.")
         ("pace-length,p",
          po::value<double>(&pace_len),
          "Set the pace lenght of reactions.")
         ("sample-number",
-         po::value<long>(&num_sample)->default_value(0),
+         po::value<size_t>(&num_sample)->default_value(0),
          "Set the number of latin hypercube sampling.")
-        ("parameter-f,A",
+        ("parameter-f",
          po::value< vector<double> >()->multitoken(),
          "Forward reaction coefficient for the first <b==f>,"
          " must be inputed and seperate by space.")
@@ -154,7 +184,7 @@ int main(int argc, char* argv[])
         ("parameter-f-floor",
          po::value<double>(&f_floor)->default_value(0.0),
          "Forward reaction coefficient floor for the first <b==f>, used for sampling.")
-        ("parameter-b,B",
+        ("parameter-b",
          po::value< vector<double> >()->multitoken(),
          "Backward reaction coefficient for the first <b==f>,"
          " must be inputed and seperate by space.")
@@ -164,7 +194,7 @@ int main(int argc, char* argv[])
         ("parameter-b-floor",
          po::value<double>(&b_floor)->default_value(0.0),
          "Backward reaction coefficient floor for the first <b==f>, used for sampling.")
-        ("parameter-kf,C",
+        ("parameter-kf",
          po::value< vector<double> >()->multitoken(),
          "Forward reaction coefficient for the second <kb-=kf>,"
          " must be inputed and seperate by space.")
@@ -174,7 +204,7 @@ int main(int argc, char* argv[])
         ("parameter-kf-floor",
          po::value<double>(&kf_floor)->default_value(0.0),
          "Forward reaction coefficient floor for the second <kb-=kf>, used for sampling.")
-        ("parameter-kb,D",
+        ("parameter-kb",
          po::value< vector<double> >()->multitoken(),
          "Backward reaction coefficient for the second <kb-=kf>,"
          " must be inputed and seperate by space.")
@@ -184,7 +214,7 @@ int main(int argc, char* argv[])
         ("parameter-kb-floor",
          po::value<double>(&kb_floor)->default_value(0.0),
          "Backward reaction coefficient floor for the second <kb-=kf>, used for sampling.")
-        ("reactant,R",
+        ("reactant",
          po::value< vector<double> >()->multitoken(),
          "Initiation of reactants, must be inputed and seperate by space.")
         ("input-roof",
@@ -193,19 +223,14 @@ int main(int argc, char* argv[])
         ("input-floor",
          po::value<double>(&input_floor)->default_value(0.0),
          "Input floor.")
-        ("input-order,I",
+        ("input-order",
          po::value<int>(&input_ord),
          "The order of final out put in reactants, from 0.")
-        ("output-order,O",
+        ("output-order",
          po::value<int>(&output_ord),
-         "The order of final out put in reactants, from 0.")
-        ("detail",
-         po::value<int>(&detail)->default_value(1),
-         "The order of final out put in reactants, from 0.")
-    //("input,i", po::value<string>(&infile_name), "The input file name.")
-        ("outfile-tag",
-         po::value<string>(&outfile_tag),
-         "The tag added before output file name.");
+         "The order of final out put in reactants, from 0.");
+
+    // }}}
     
     po::variables_map vm;    // make variables map.
     po::store(po::parse_command_line(argc, argv, desc), vm);    // store command line values to vm.
@@ -219,7 +244,7 @@ int main(int argc, char* argv[])
     //}
     
     if (vm.count("help")) {
-        // help.
+        // {{{ Option: help.
         cout << "********************\n"
              << "**      mapk      **\n"
              << "********************\n\n"
@@ -255,8 +280,20 @@ int main(int argc, char* argv[])
         cout << "\n********************\n";
         cout << desc << endl;
         return 1;
+        // }}}
     }
 
+    if (vm.count("output-at-last")) {
+        // {{{
+        output_last = true;
+        // }}}
+    }
+
+    if (vm.count("detail")) {
+        // {{{
+        detail = true;
+        // }}}
+     }
     if (!vm["time"].empty() &&
         (vm["time"].as< vector<double> >().size() == 2)) {
         // set time.
@@ -274,7 +311,7 @@ int main(int argc, char* argv[])
         b.reset(new double [num_chem]);
         kf.reset(new double [num_chem]);
         kb.reset(new double [num_chem]);
-        for (int i = 0; i != num_chem; ++i) {
+        for (size_t i = 0; i != num_chem; ++i) {
             f[i]  = vm["parameter-f"].as< vector<double> >()[i];
             b[i]  = vm["parameter-b"].as< vector<double> >()[i];
             kf[i] = vm["parameter-kf"].as< vector<double> >()[i];
@@ -289,11 +326,13 @@ int main(int argc, char* argv[])
         // set reactant concentration.
         num_reactant = vm["reactant"].as< vector<double> >().size();
         reactant.reset(new double [num_reactant]);
-        for (int i = 0; i != num_reactant; ++i) {
+        for (size_t i = 0; i != num_reactant; ++i) {
             reactant[i] = vm["reactant"].as< vector<double> >()[i];
         }
     }
     ////////////////////
+
+    // }}}
 
 
     ////////////////////
@@ -303,27 +342,33 @@ int main(int argc, char* argv[])
         reactantName(reactant_names, reaction_type);
     }   
     ////////////////////
-    ostringstream outnamestr;     // output.
+
+
+    ////////////////////
+    // Initiate Files
+    ////////////////////
+    // {{{ Initiate Files
+    ostringstream moutnamestr;     // output.
     ostringstream ioutnamestr;    // interpolation output.
     ostringstream doutnamestr;    // detail output.
     ostringstream poutnamestr;    // parameter output.
-    ostringstream coutnamestr;    // calculate output.
+    ostringstream coutnamestr;    // calculation output.
     ostringstream infonamestr;    // infofile name.
     
 
     // outfile.
-    outnamestr << outfile_tag
-               <<"mapk_t"
-               << reaction_type
-               << ".csv";
-    outfile_name = outnamestr.str();
-    if (isFileExist(outfile_name.c_str())) {
-        outfile.open(outfile_name.c_str(),
-                     ofstream::out | ofstream::app);
+    moutnamestr << outfile_tag
+                <<"mapk_t"
+                << reaction_type
+                << ".csv";
+    main_outfile_name = moutnamestr.str();
+    if (isFileExist(main_outfile_name.c_str())) {
+        main_outfile.open(main_outfile_name.c_str(),
+                          ofstream::out | ofstream::app);
     } else {
-        outfile.open(outfile_name.c_str(),
-                 ofstream::out | ofstream::app);
-        outfile << "Sample,Input,Output,Time,Dissipation\n";
+        main_outfile.open(main_outfile_name.c_str(),
+                          ofstream::out | ofstream::app);
+        main_outfile << "Sample,Input,Output,Time,Dissipation\n";
     } // if
     
 
@@ -365,19 +410,19 @@ int main(int argc, char* argv[])
     } // if
 
     
-    // calculate outfile.
+    // calculation outfile.
     coutnamestr << outfile_tag
                 <<"mapk_t"
                 << reaction_type
-                << "_calculate.csv";
-    calculate_outfile_name = coutnamestr.str();
-    if (isFileExist(calculate_outfile_name.c_str())) {
-        calculate_outfile.open(calculate_outfile_name.c_str(),
+                << "_calculation.csv";
+    calculation_outfile_name = coutnamestr.str();
+    if (isFileExist(calculation_outfile_name.c_str())) {
+        calculation_outfile.open(calculation_outfile_name.c_str(),
                                ofstream::out | ofstream::app);
     } else {
-        calculate_outfile.open(calculate_outfile_name.c_str(),
+        calculation_outfile.open(calculation_outfile_name.c_str(),
                                ofstream::out | ofstream::app);
-        calculate_outfile << "Sample,Percent,"
+        calculation_outfile << "Sample,Percent,"
                           << "Input,Output,"
                           << "Time,Dissipation\n";
     } // if.
@@ -414,14 +459,35 @@ int main(int argc, char* argv[])
     infofile_name = infonamestr.str();
     infofile.open(infofile_name.c_str(), ofstream::out | ofstream::app);
 
+    // choose output to file at the end of program or in the run.
+    ostream& main_output = chooseOstream(output_last,
+                                         main_outstr,
+                                         main_outfile);
+    ostream& detail_output = chooseOstream(output_last,
+                                           detail_outstr,
+                                           detail_outfile);
+    ostream& parameter_output = chooseOstream(output_last,
+                                              parameter_outstr,
+                                              parameter_outfile);
+    ostream& interpolation_output = chooseOstream(output_last,
+                                                  interpolation_outstr,
+                                                  interpolation_outfile);
+    ostream& calculation_output = chooseOstream(output_last,
+                                                calculation_outstr,
+                                                calculation_outfile);
+    ostream& info_output = chooseOstream(output_last,
+                                         infostr,
+                                         infofile);
+    
     ////////////////////
-
+    // }}}
 
     
     if (num_sample == 0) {
         nosample = true;
         num_sample = 1;
     }
+    
     Parameter         para_l(num_chem);
     Parameter*        param_l = & para_l;
 
@@ -442,9 +508,9 @@ int main(int argc, char* argv[])
     DataInterpolation input_time;
     DataInterpolation input_dissipation;
 
-    for (long si = 0; si != num_sample; ++si) {
-        
-        
+    for (size_t si = 0; si != num_sample; ++si) {
+        // {{{ Different sample
+
         // Reset parameter to the latin hypercube sampling
         // parameters.
         if (!nosample) {
@@ -471,27 +537,26 @@ int main(int argc, char* argv[])
         // record the notSufficient pointer.
         double      input_value     = input_floor;
         double      input_valueroof = input_roof;
-        double      input_pace      =
-            (input_roof - input_floor) / 200;
         int         whilecount      = -1;
         
         
         do {
+            // {{{ Run one ordinary differential equation
+
             ++whilecount;
-            for (int ri = 0; ri != num_reactant; ++ri) {
+            for (size_t ri = 0; ri != num_reactant; ++ri) {
                 // reset the value of reactant.
                 reactant_ode[ri] = reactant[ri];
             } // for.
             // use a different input.
             reactant_ode[input_ord] = input_value;
 
-
             
             ReactantConcentration reaction_l(reaction_type);
             //cout << reaction_l.final_out << "\n";
             // Output parameter and reactant.
 
-            parameter_outstr << si  << "," << whilecount << ","
+            parameter_output << si  << "," << whilecount << ","
                              << sf  << "," << sb         << ","
                              << skf << "," << skb        << ","
                              << param_l->atp;
@@ -499,10 +564,10 @@ int main(int argc, char* argv[])
             for (size_t rcti = 0;
                  rcti != num_reactant;
                  ++rcti) {
-                parameter_outstr << ","
+                parameter_output << ","
                                  << reactant_ode[rcti];
             } // for
-            parameter_outstr << "\n";
+            parameter_output << "\n";
 
             //cout << si << " latin: "
             //     << sf << ", "
@@ -519,24 +584,28 @@ int main(int argc, char* argv[])
                               pace_len);
             
             if (!reaction_l.reachStable()) {
-                // if not stable output situation to infofile.
-                infostr << "ODE Not reach Stable: \n"
-                        << "Sample(" << si << "," << whilecount << ") \n"
-                        << "Parameter(" << sf << "," << sb << ","
-                        << skf << "," << skb << ")\n"
-                        << "Reactant: \n";
+                // {{{ Judge reach stable
+                info_output << "ODE Not reach Stable: \n"
+                            << "Sample(" << si << ","
+                            << whilecount << ") \n"
+                            << "Parameter(" << sf << "," << sb << ","
+                            << skf << "," << skb << ")\n"
+                            << "Reactant: \n";
                 for (size_t rli = 0;
                      rli != reaction_l.time.size();
                      ++rli) {
-                    infostr << reaction_l.time[rli] << ","
-                            << reaction_l.list[rli] << ","
-                            << reaction_l.dissipation[rli] << "\n";
+                    info_output << reaction_l.time[rli] << ","
+                                << reaction_l.list[rli] << ","
+                                << reaction_l.dissipation[rli] << "\n";
                 } // for
-                infostr << "\n";
+                info_output << "\n";
                 continue;
+                // }}}
             } // if ode result stable.
-            // Judge oscillation.
+
+            
             if (reaction_l.isOscillation()) {
+                // {{{ Judge oscillation.
                 // if not stable output situation to infofile.
                 infostr << "May have oscillation: \n"
                         << "Sample(" << si << "," << whilecount << ")\n"
@@ -552,19 +621,21 @@ int main(int argc, char* argv[])
                 } // for
                 infostr << "\n";
                 continue;
-            }                
-            if (detail == 1) {
-                // if output detail.
+                // }}}
+            }
 
+            if (detail) {
+                // {{{ Output detail
                 // output detail data.
                 for (size_t rli = 0;
                      rli != reaction_l.time.size();
                      ++rli) {
-                    detail_outstr << si << "," << whilecount << ","
+                    detail_output << si << "," << whilecount << ","
                                   << reaction_l.time[rli] << ","
                                   << reaction_l.dissipation[rli] << ","
                                   << reaction_l.list[rli] << "\n";
                 } // for
+                // }}}
             } // if output detail.
             
             stable_list.addInter(nsit,
@@ -577,6 +648,7 @@ int main(int argc, char* argv[])
             if (whilecount < 1) {
                 input_value = input_roof;
             } else {
+                // {{{ Unsufficient will insert more points
                 if (nsit != stable_list.situation.end()) {
                     // if get unsufficient pointer,
                     // do more calculation.
@@ -592,9 +664,12 @@ int main(int argc, char* argv[])
                         continue;
                     } // if.
                     break;
+                    
                 }
+                // }}}
             }// if whilecount.
-  
+
+            // }}}
         } while(whilecount < 1000);
         
         detail_outfile << detail_outstr.str(); // output ostringstream.
@@ -609,7 +684,7 @@ int main(int argc, char* argv[])
         for (size_t sli = 0;
              sli != stable_list.size();
              ++sli) {
-            outstr << si << "," << stable_list[sli] << "\n";
+            main_output << si << "," << stable_list[sli] << "\n";
             //cout << stable_list[sli] << "\n";
         }
 
@@ -619,8 +694,8 @@ int main(int argc, char* argv[])
                                   stable_list.getArray(2),
                                   stable_list.size(),
                                   1000);
-        for (int ioi = 0; ioi != input_output.size(); ++ioi) {
-            interpolation_outstr << si << ",io,"
+        for (size_t ioi = 0; ioi != input_output.size(); ++ioi) {
+            interpolation_output << si << ",io,"
                                  << input_output.x[ioi] << ","
                                  << input_output.y[ioi] << "\n";
         } //for input_output.
@@ -628,8 +703,8 @@ int main(int argc, char* argv[])
                                 stable_list.getArray(3),
                                 stable_list.size(),
                                 1000);
-        for (int iti = 0; iti != input_time.size(); ++iti) {
-            interpolation_outstr << si << ",it,"
+        for (size_t iti = 0; iti != input_time.size(); ++iti) {
+            interpolation_output << si << ",it,"
                                  << input_time.x[iti] << ","
                                  << input_time.y[iti] << "\n";
         } // for input_time.
@@ -637,12 +712,12 @@ int main(int argc, char* argv[])
                                        stable_list.getArray(4),
                                        stable_list.size(),
                                        1000);
-        for (int idi = 0; idi != input_dissipation.size(); ++idi) {
-            interpolation_outstr << si << ",id,"
+        for (size_t idi = 0; idi != input_dissipation.size(); ++idi) {
+            interpolation_output << si << ",id,"
                                  << input_dissipation.x[idi] << ","
                                  << input_dissipation.y[idi] << "\n";
         } // for input_dissipation.
-        //// calculate_outfile.
+        //// calculation_outfile.
 
         int num_9_io = input_output.nearPercentNum(0.9, 2);
         double input_9_io = input_output.x[num_9_io];
@@ -652,44 +727,48 @@ int main(int argc, char* argv[])
         int num_1_it = input_time.nearValueNum(input_1_io, 1);
         int num_9_id = input_dissipation.nearValueNum(input_9_io, 1);
         int num_1_id = input_dissipation.nearValueNum(input_1_io, 1);
-        calculate_outstr << si << "," << 0.1 << ","
-                         << input_output.x[num_1_io] << ","
-                         << input_output.y[num_1_io] << ","
-                         << input_time.y[num_1_it] << ","
-                         << input_dissipation.y[num_1_id] << "\n"
-                         << si << "," << 0.9 << ","
-                         << input_output.x[num_9_io] << ","
-                         << input_output.y[num_9_io] << ","
-                         << input_time.y[num_9_it] << ","
-                         << input_dissipation.y[num_9_id] << "\n";
+        calculation_output << si << "," << 0.1 << ","
+                           << input_output.x[num_1_io] << ","
+                           << input_output.y[num_1_io] << ","
+                           << input_time.y[num_1_it] << ","
+                           << input_dissipation.y[num_1_id] << "\n"
+                           << si << "," << 0.9 << ","
+                           << input_output.x[num_9_io] << ","
+                           << input_output.y[num_9_io] << ","
+                           << input_time.y[num_9_it] << ","
+                           << input_dissipation.y[num_9_id] << "\n";
 
+        // }}} 
     } // for loop for latin hypercube sampling parameter.
     
     ////////////////////
     // End program
     ////////////////////
-
+    // {{{ Release Memery and Files
     
-    outfile               << outstr.str();
+    main_outfile          << main_outstr.str();
 
-    calculate_outfile     << calculate_outstr.str();
+    calculation_outfile     << calculation_outstr.str();
     parameter_outfile     << parameter_outstr.str();
     interpolation_outfile << interpolation_outstr.str();
     infofile              << infostr.str();
     
     delete [] reactant_ode;
+    main_outfile.close();
+    main_outfile.clear();
     parameter_outfile.close();
     parameter_outfile.clear();
-    outfile.close();
-    outfile.clear();
     detail_outfile.close();
     detail_outfile.clear();
     interpolation_outfile.close();
     interpolation_outfile.clear();
-    calculate_outfile.close();
-    calculate_outfile.clear();
+    calculation_outfile.close();
+    calculation_outfile.clear();
     infofile.close();
     infofile.clear();
+    ////////////////////
+    // }}}
+
     cout << "\n"
          << "********************\n"
          << "**    Finished    **\n"
@@ -700,11 +779,31 @@ int main(int argc, char* argv[])
 }
 ////////////////////
 
+////////////////////
+// Functions
+////////////////////
+
 bool isFileExist(const char* file_name)
+// {{{ isFileExist: judge file exist.
 {
     ifstream in_file(file_name);
     return in_file.good();
 }
+//}}}
 
 
-
+ostream& chooseOstream(const bool& choice,
+                       ostream&    ostypetrue,
+                       ostream&    ostypefalse)
+// {{{ chooseOstream: Choose ostream by choice.
+{
+    if (choice) {
+        return ostypetrue;
+    } else {
+        return ostypefalse;
+    }
+}
+// }}}
+/////////
+// EOF //
+/////////
